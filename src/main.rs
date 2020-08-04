@@ -12,7 +12,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 static mut ORIGINAL_CONFIG: Option<termios> = None;
 
 fn main() -> Result<(), io::Error> {
-    enableRawMode();
+    prepareTermConfig();
 
     let mut c = [0; 1];
     loop {
@@ -23,19 +23,23 @@ fn main() -> Result<(), io::Error> {
     }
 }
 
-fn enableRawMode() {
+///Enables raw mode and disables canonical mode
+fn prepareTermConfig() {
     let mut raw: MaybeUninit<termios> = MaybeUninit::uninit();
+    let mut config;
     unsafe {
         tcgetattr(STDIN_FILENO as i32, raw.as_mut_ptr());
-        let mut config = raw.assume_init();
-        ORIGINAL_CONFIG = Some(config.clone());
-        config.c_lflag &= !(ECHO);
+        config = raw.assume_init();
+        if let None = ORIGINAL_CONFIG {
+            ORIGINAL_CONFIG = Some(config.clone());
+        }
+        config.c_lflag &= !(ECHO | ICANON);
         tcsetattr(STDIN_FILENO as i32, TCSAFLUSH as i32, &mut config);
-        atexit(Some(disableRawMode));
+        atexit(Some(restoreTermConfig));
     }
 }
 
-extern "C" fn disableRawMode() {
+extern "C" fn restoreTermConfig() {
     unsafe {
         tcsetattr(
             STDIN_FILENO as i32,
