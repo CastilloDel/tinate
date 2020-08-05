@@ -20,6 +20,11 @@ fn main() -> Result<(), io::Error> {
         if c[0] == 'q' as u8 {
             break Ok(());
         }
+        if c[0].is_ascii_control() {
+            println!("{}", c[0]);
+        } else {
+            println!("{} ({})", c[0], c[0] as char);
+        }
     }
 }
 
