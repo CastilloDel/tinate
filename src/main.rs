@@ -21,9 +21,9 @@ fn main() -> Result<(), io::Error> {
             break Ok(());
         }
         if c[0].is_ascii_control() {
-            println!("{}", c[0]);
+            println!("{}\r", c[0]);
         } else {
-            println!("{} ({})", c[0], c[0] as char);
+            println!("{} ({})\r", c[0], c[0] as char);
         }
     }
 }
@@ -38,7 +38,9 @@ fn prepareTermConfig() {
         if let None = ORIGINAL_CONFIG {
             ORIGINAL_CONFIG = Some(config.clone());
         }
-        config.c_lflag &= !(ECHO | ICANON);
+        config.c_iflag &= !(IXON | IXON);
+        config.c_oflag &= !(OPOST);
+        config.c_lflag &= !(ECHO | ICANON | IEXTEN | ISIG);
         tcsetattr(STDIN_FILENO as i32, TCSAFLUSH as i32, &mut config);
         atexit(Some(restoreTermConfig));
     }
