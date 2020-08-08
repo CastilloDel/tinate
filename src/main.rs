@@ -17,7 +17,7 @@ fn main() -> Result<(), io::Error> {
     let mut c = [0; 1];
     loop {
         io::stdin().read_exact(&mut c)?;
-        if c[0] == 'q' as u8 {
+        if c[0] == control_key('q' as u8) {
             break Ok(());
         }
         if c[0].is_ascii_control() {
@@ -28,7 +28,7 @@ fn main() -> Result<(), io::Error> {
     }
 }
 
-///Enables raw mode and disables canonical mode
+///Enables raw mode and disables canonical mode as well as other things
 fn prepareTermConfig() {
     let mut raw: MaybeUninit<termios> = MaybeUninit::uninit();
     let mut config;
@@ -69,4 +69,8 @@ extern "C" fn restoreTermConfig() {
     if result == -1 {
         panic!("Couldn't restore the original terminal configuration")
     }
+}
+
+fn control_key(key: u8) -> u8 {
+    key & 0x1f
 }
