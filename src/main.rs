@@ -32,26 +32,41 @@ fn main() -> Result<(), io::Error> {
 fn prepareTermConfig() {
     let mut raw: MaybeUninit<termios> = MaybeUninit::uninit();
     let mut config;
+    let mut result;
     unsafe {
-        tcgetattr(STDIN_FILENO as i32, raw.as_mut_ptr());
+        result = tcgetattr(STDIN_FILENO as i32, raw.as_mut_ptr());
+    }
+    if result == -1 {
+        panic!("Couldn't get the terminal configuration");
+    }
+    unsafe {
         config = raw.assume_init();
         if let None = ORIGINAL_CONFIG {
             ORIGINAL_CONFIG = Some(config.clone());
         }
-        config.c_iflag &= !(IXON | IXON);
-        config.c_oflag &= !(OPOST);
-        config.c_lflag &= !(ECHO | ICANON | IEXTEN | ISIG);
-        tcsetattr(STDIN_FILENO as i32, TCSAFLUSH as i32, &mut config);
+    }
+    config.c_iflag &= !(IXON | IXON);
+    config.c_oflag &= !(OPOST);
+    config.c_lflag &= !(ECHO | ICANON | IEXTEN | ISIG);
+    unsafe {
+        result = tcsetattr(STDIN_FILENO as i32, TCSAFLUSH as i32, &mut config);
         atexit(Some(restoreTermConfig));
+    }
+    if result == -1 {
+        panic!("Couldn't set the terminal configuration");
     }
 }
 
 extern "C" fn restoreTermConfig() {
+    let result;
     unsafe {
-        tcsetattr(
+        result = tcsetattr(
             STDIN_FILENO as i32,
             TCSAFLUSH as i32,
             &mut ORIGINAL_CONFIG.unwrap(),
         );
+    }
+    if result == -1 {
+        panic!("Couldn't restore the original terminal configuration")
     }
 }
