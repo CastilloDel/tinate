@@ -6,6 +6,7 @@
 use std::io;
 use std::io::Read;
 use std::mem::MaybeUninit;
+use std::process;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
@@ -14,17 +15,25 @@ static mut ORIGINAL_CONFIG: Option<termios> = None;
 fn main() -> Result<(), io::Error> {
     prepareTermConfig();
 
-    let mut c = [0; 1];
     loop {
-        io::stdin().read_exact(&mut c)?;
-        if c[0] == control_key('q' as u8) {
-            break Ok(());
-        }
-        if c[0].is_ascii_control() {
-            println!("{}\r", c[0]);
-        } else {
-            println!("{} ({})\r", c[0], c[0] as char);
-        }
+        processKey();
+    }
+}
+
+fn processKey() {
+    let key = readKey();
+
+    match key {
+        key if key == controlKey('q' as u8) => process::exit(0),
+        _ => {}
+    }
+}
+
+fn readKey() -> u8 {
+    let mut key = [0; 1];
+    match io::stdin().read_exact(&mut key) {
+        Ok(()) => key[0],
+        Err(error) => panic!("Couldn't read: {}", error),
     }
 }
 
@@ -71,6 +80,6 @@ extern "C" fn restoreTermConfig() {
     }
 }
 
-fn control_key(key: u8) -> u8 {
+fn controlKey(key: u8) -> u8 {
     key & 0x1f
 }
