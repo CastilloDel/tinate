@@ -4,7 +4,7 @@
 #![allow(improper_ctypes)]
 
 use std::io;
-use std::io::Read;
+use std::io::prelude::*;
 use std::mem::MaybeUninit;
 use std::process;
 
@@ -16,6 +16,7 @@ fn main() -> Result<(), io::Error> {
     prepareTermConfig();
 
     loop {
+        clearScreen();
         processKey();
     }
 }
@@ -24,7 +25,10 @@ fn processKey() {
     let key = readKey();
 
     match key {
-        key if key == controlKey('q' as u8) => process::exit(0),
+        key if key == controlKey('q' as u8) => {
+            clearScreen();
+            process::exit(0);
+        }
         _ => {}
     }
 }
@@ -37,6 +41,12 @@ fn readKey() -> u8 {
     }
 }
 
+fn clearScreen() {
+    print!("\x1b[2J");
+    print!("\x1b[H");
+    io::stdout().flush().expect("Couldn't flush the stdout");
+}
+
 ///Enables raw mode and disables canonical mode as well as other things
 fn prepareTermConfig() {
     let mut raw: MaybeUninit<termios> = MaybeUninit::uninit();
@@ -46,7 +56,7 @@ fn prepareTermConfig() {
         result = tcgetattr(STDIN_FILENO as i32, raw.as_mut_ptr());
     }
     if result == -1 {
-        panic!("Couldn't get the terminal configuration");
+        die("Couldn't get the terminal configuration");
     }
     unsafe {
         config = raw.assume_init();
@@ -62,7 +72,7 @@ fn prepareTermConfig() {
         atexit(Some(restoreTermConfig));
     }
     if result == -1 {
-        panic!("Couldn't set the terminal configuration");
+        die("Couldn't set the terminal configuration");
     }
 }
 
@@ -76,10 +86,15 @@ extern "C" fn restoreTermConfig() {
         );
     }
     if result == -1 {
-        panic!("Couldn't restore the original terminal configuration")
+        die("Couldn't restore the original terminal configuration");
     }
 }
 
 fn controlKey(key: u8) -> u8 {
     key & 0x1f
+}
+
+fn die(msg: &'static str) {
+    clearScreen();
+    panic!(msg);
 }
