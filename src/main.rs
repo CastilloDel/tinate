@@ -16,7 +16,7 @@ fn main() -> Result<(), io::Error> {
     prepareTermConfig();
 
     loop {
-        clearScreen();
+        refreshScreen();
         processKey();
     }
 }
@@ -41,10 +41,25 @@ fn readKey() -> u8 {
     }
 }
 
+fn refreshScreen() {
+    clearScreen();
+
+    drawRows();
+
+    print!("\x1b[H");
+    io::stdout().flush().expect("Couldn't flush the stdout");
+}
+
 fn clearScreen() {
     print!("\x1b[2J");
     print!("\x1b[H");
     io::stdout().flush().expect("Couldn't flush the stdout");
+}
+
+fn drawRows() {
+    for _i in 0..24 {
+        println!("~\r");
+    }
 }
 
 ///Enables raw mode and disables canonical mode as well as other things
