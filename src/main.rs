@@ -1,8 +1,3 @@
-#![allow(non_upper_case_globals)]
-#![allow(non_camel_case_types)]
-#![allow(non_snake_case)]
-#![allow(improper_ctypes)]
-
 use std::io;
 use std::io::prelude::*;
 use std::process;
@@ -10,32 +5,40 @@ use termios::{
     os::target::TCSAFLUSH, tcsetattr, Termios, ECHO, ICANON, ICRNL, IEXTEN, ISIG, IXON, OPOST,
 };
 
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-
 static mut ORIGINAL_CONFIG: Option<Termios> = None;
+const STDIN_FILENO: u32 = 0;
 
 fn main() -> Result<(), io::Error> {
-    prepareTermConfig();
+    prepare_term_config();
+    let _will_get_dropped = AtExit {};
 
     loop {
-        refreshScreen();
-        processKey();
+        refresh_screen();
+        process_key();
     }
 }
 
-fn processKey() {
-    let key = readKey();
+struct AtExit;
+
+impl Drop for AtExit {
+    fn drop(&mut self) {
+        restore_term_config();
+    }
+}
+
+fn process_key() {
+    let key = read_key();
 
     match key {
-        key if key == controlKey('q' as u8) => {
-            clearScreen();
+        key if key == control_key('q' as u8) => {
+            clear_screen();
             process::exit(0);
         }
         _ => {}
     }
 }
 
-fn readKey() -> u8 {
+fn read_key() -> u8 {
     let mut key = [0; 1];
     match io::stdin().read_exact(&mut key) {
         Ok(()) => key[0],
@@ -43,29 +46,29 @@ fn readKey() -> u8 {
     }
 }
 
-fn refreshScreen() {
-    clearScreen();
+fn refresh_screen() {
+    clear_screen();
 
-    drawRows();
+    draw_rows();
 
     print!("\x1b[H");
     io::stdout().flush().expect("Couldn't flush the stdout");
 }
 
-fn clearScreen() {
+fn clear_screen() {
     print!("\x1b[2J");
     print!("\x1b[H");
     io::stdout().flush().expect("Couldn't flush the stdout");
 }
 
-fn drawRows() {
+fn draw_rows() {
     for _i in 0..24 {
         println!("~\r");
     }
 }
 
 ///Enables raw mode and disables canonical mode as well as other things
-fn prepareTermConfig() {
+fn prepare_term_config() {
     let mut config = match Termios::from_fd(STDIN_FILENO as i32) {
         Err(_) => die("Couldn't get the terminal configuration"),
         Ok(config) => config,
@@ -82,12 +85,9 @@ fn prepareTermConfig() {
     if let Err(_) = tcsetattr(STDIN_FILENO as i32, TCSAFLUSH as i32, &mut config) {
         die("Couldn't set the terminal configuration");
     }
-    unsafe {
-        atexit(Some(restoreTermConfig));
-    }
 }
 
-extern "C" fn restoreTermConfig() {
+fn restore_term_config() {
     //SAFETY: Accesing a global static variable
     unsafe {
         if let Err(_) = tcsetattr(
@@ -100,11 +100,11 @@ extern "C" fn restoreTermConfig() {
     }
 }
 
-fn controlKey(key: u8) -> u8 {
+fn control_key(key: u8) -> u8 {
     key & 0x1f
 }
 
 fn die(msg: &'static str) -> ! {
-    clearScreen();
+    clear_screen();
     panic!(msg);
 }

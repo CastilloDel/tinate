@@ -8,6 +8,3 @@ edition = "2018"
 
 [dependencies]
 termios = "0.3.2"
-
-[build-dependencies]
-bindgen = "0.54.1"
