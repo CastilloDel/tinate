@@ -32,6 +32,8 @@ fn process_key() {
     match key {
         key if key == control_key('q' as u8) => {
             clear_screen();
+            //Manual call because exit won't call the drop fot AtExit
+            restore_term_config();
             process::exit(0);
         }
         _ => {}
