@@ -1,42 +1,43 @@
 use std::io;
 use std::io::prelude::*;
-use std::process;
 use termios::{
     os::target::TCSAFLUSH, tcsetattr, Termios, ECHO, ICANON, ICRNL, IEXTEN, ISIG, IXON, OPOST,
 };
 
-static mut ORIGINAL_CONFIG: Option<Termios> = None;
 const STDIN_FILENO: u32 = 0;
 
 fn main() -> Result<(), io::Error> {
+    let original_config = get_term_config();
     prepare_term_config();
-    let _will_get_dropped = AtExit {};
+    let _will_get_dropped = AtExit { original_config };
 
     loop {
         refresh_screen();
-        process_key();
+        if let None = process_key() {
+            break Ok(());
+        }
     }
 }
 
-struct AtExit;
+struct AtExit {
+    original_config: Termios,
+}
 
 impl Drop for AtExit {
     fn drop(&mut self) {
-        restore_term_config();
+        set_term_config(&mut self.original_config);
     }
 }
 
-fn process_key() {
+fn process_key() -> Option<()> {
     let key = read_key();
 
     match key {
         key if key == control_key('q' as u8) => {
             clear_screen();
-            //Manual call because exit won't call the drop fot AtExit
-            restore_term_config();
-            process::exit(0);
+            None
         }
-        _ => {}
+        _ => Some(()),
     }
 }
 
@@ -69,36 +70,25 @@ fn draw_rows() {
     }
 }
 
-///Enables raw mode and disables canonical mode as well as other things
-fn prepare_term_config() {
-    let mut config = match Termios::from_fd(STDIN_FILENO as i32) {
+fn get_term_config() -> Termios {
+    match Termios::from_fd(STDIN_FILENO as i32) {
         Err(_) => die("Couldn't get the terminal configuration"),
         Ok(config) => config,
-    };
-    //SAFETY: Accesing a global static variable
-    unsafe {
-        if let None = ORIGINAL_CONFIG {
-            ORIGINAL_CONFIG = Some(config.clone());
-        }
-    }
-    config.c_iflag &= !(IXON | ICRNL);
-    config.c_oflag &= !(OPOST);
-    config.c_lflag &= !(ECHO | ICANON | IEXTEN | ISIG);
-    if let Err(_) = tcsetattr(STDIN_FILENO as i32, TCSAFLUSH as i32, &mut config) {
-        die("Couldn't set the terminal configuration");
     }
 }
 
-fn restore_term_config() {
-    //SAFETY: Accesing a global static variable
-    unsafe {
-        if let Err(_) = tcsetattr(
-            STDIN_FILENO as i32,
-            TCSAFLUSH as i32,
-            &mut ORIGINAL_CONFIG.unwrap(),
-        ) {
-            die("Couldn't restore the original terminal configuration");
-        }
+///Enables raw mode and disables canonical mode as well as other things
+fn prepare_term_config() {
+    let mut config = get_term_config();
+    config.c_iflag &= !(IXON | ICRNL);
+    config.c_oflag &= !(OPOST);
+    config.c_lflag &= !(ECHO | ICANON | IEXTEN | ISIG);
+    set_term_config(&mut config);
+}
+
+fn set_term_config(config: &mut Termios) {
+    if let Err(_) = tcsetattr(STDIN_FILENO as i32, TCSAFLUSH as i32, config) {
+        die("Couldn't set the terminal configuration");
     }
 }
 
