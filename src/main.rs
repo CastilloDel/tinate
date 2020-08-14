@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fmt::Write as fmt_write;
 use std::io;
 use std::io::prelude::*;
@@ -48,15 +49,15 @@ fn read_key() -> u8 {
     let mut key = [0; 1];
     match io::stdin().read_exact(&mut key) {
         Ok(()) => key[0],
-        Err(error) => panic!("Couldn't read: {}", error),
+        Err(error) => die_with_err("Couldn't read", &error),
     }
 }
 
 fn refresh_screen(n_rows: usize) {
     clear_screen();
 
-    if let Err(_) = draw_rows(n_rows) {
-        die("Couldn't refresh the screen");
+    if let Err(err) = draw_rows(n_rows) {
+        die_with_err("Couldn't refresh the screen", &err);
     }
 
     print!("\x1b[H");
@@ -83,13 +84,13 @@ fn get_term_size() -> (usize, usize) {
     if let Some((w, h)) = term_size::dimensions() {
         return (w, h);
     } else {
-        die("Unable to get term size")
+        die("Unable to get term size");
     }
 }
 
 fn get_term_config() -> Termios {
     match Termios::from_fd(STDIN_FILENO as i32) {
-        Err(_) => die("Couldn't get the terminal configuration"),
+        Err(err) => die_with_err("Couldn't get the terminal configuration", &err),
         Ok(config) => config,
     }
 }
@@ -104,13 +105,21 @@ fn prepare_term_config() {
 }
 
 fn set_term_config(config: &mut Termios) {
-    if let Err(_) = tcsetattr(STDIN_FILENO as i32, TCSAFLUSH as i32, config) {
-        die("Couldn't set the terminal configuration");
+    if let Err(err) = tcsetattr(STDIN_FILENO as i32, TCSAFLUSH as i32, config) {
+        die_with_err("Couldn't set the terminal configuration", &err);
     }
 }
 
 fn control_key(key: u8) -> u8 {
     key & 0x1f
+}
+
+fn die_with_err<T>(msg: &'static str, err: &T) -> !
+where
+    T: Error,
+{
+    clear_screen();
+    panic!("{}: {}", msg, err);
 }
 
 fn die(msg: &'static str) -> ! {
