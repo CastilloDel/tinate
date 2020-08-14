@@ -1,102 +1,100 @@
-use std::error::Error;
+use crossterm::terminal::size as term_size;
+use crossterm::{
+    cursor::MoveTo,
+    execute, queue,
+    terminal::{
+        disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
+        LeaveAlternateScreen,
+    },
+    Result,
+};
 use std::fmt::Write as fmt_write;
 use std::io;
 use std::io::prelude::*;
 use std::io::Write;
-use termios::{
-    os::target::TCSAFLUSH, tcsetattr, Termios, ECHO, ICANON, ICRNL, IEXTEN, ISIG, IXON, OPOST,
-};
+use std::process::exit;
 
-const STDIN_FILENO: u32 = 0;
 const WELCOME_MESSAGE: &'static str = "Tinate Is Not A Text Editor";
 
-fn main() -> Result<(), io::Error> {
-    let original_config = get_term_config();
-    prepare_term_config();
-    let _will_get_dropped = AtExit { original_config };
+fn main() -> Result<()> {
+    execute!(io::stdout(), EnterAlternateScreen)?;
+    enable_raw_mode()?;
+    let _will_get_dropped = AtExit {};
 
-    let (n_cols, n_rows) = get_term_size();
     loop {
-        refresh_screen(n_rows, n_cols);
-        if let None = process_key() {
-            break Ok(());
-        }
+        refresh_screen()?;
+        process_key()?;
     }
 }
 
-struct AtExit {
-    original_config: Termios,
-}
+struct AtExit {}
 
 impl Drop for AtExit {
     fn drop(&mut self) {
-        set_term_config(&mut self.original_config);
+        //The result isn't managed because it could cause a panic during a panic
+        disable_raw_mode().ok();
     }
 }
 
-fn process_key() -> Option<()> {
-    let key = read_key();
+fn process_key() -> Result<()> {
+    let key = read_key()?;
 
     match key {
         key if key == control_key('q' as u8) => {
-            clear_screen();
-            None
+            execute!(io::stdout(), LeaveAlternateScreen)?;
+            //exit won't call destructors
+            disable_raw_mode()?;
+            exit(0);
         }
-        _ => Some(()),
+        _ => Ok(()),
     }
 }
 
-fn read_key() -> u8 {
+fn read_key() -> Result<u8> {
     let mut key = [0; 1];
-    match io::stdin().read_exact(&mut key) {
-        Ok(()) => key[0],
-        Err(error) => die_with_err("Couldn't read", &error),
-    }
+    io::stdin().read_exact(&mut key)?;
+    Ok(key[0])
 }
 
-fn refresh_screen(n_rows: usize, n_cols: usize) {
-    clear_screen();
+fn refresh_screen() -> Result<()> {
+    queue!(io::stdout(), MoveTo(0, 0))?;
 
-    if let Err(err) = draw_rows(n_rows, n_cols) {
-        die_with_err("Couldn't refresh the screen", &err);
-    }
+    draw_rows()?;
 
-    print!("\x1b[H");
-    io::stdout().flush().expect("Couldn't flush the stdout");
+    queue!(io::stdout(), MoveTo(0, 0))?;
+    io::stdout().flush()?;
+    Ok(())
 }
 
-fn clear_screen() {
-    print!("\x1b[2J");
-    print!("\x1b[H");
-    io::stdout().flush().expect("Couldn't flush the stdout");
-}
-
-fn draw_rows(n_rows: usize, n_cols: usize) -> std::fmt::Result {
+fn draw_rows() -> Result<()> {
     let mut s = String::new();
-    for i in 0..n_rows - 1 {
+    let (n_cols, n_rows) = term_size()?;
+    for i in 0..n_rows {
+        queue!(io::stdout(), Clear(ClearType::CurrentLine))?;
         if i == n_rows / 3 {
             add_welcome_message(&mut s, n_cols)?;
+        } else if i == n_rows - 1 {
+            write!(&mut s, "~")?;
         } else {
             write!(&mut s, "~\r\n")?;
         }
     }
-    write!(&mut s, "~")?;
     print!("{}", s);
     Ok(())
 }
 
-fn add_welcome_message(s: &mut String, n_cols: usize) -> std::fmt::Result {
+fn add_welcome_message(s: &mut String, n_cols: u16) -> std::fmt::Result {
     let mut msg = String::from(WELCOME_MESSAGE);
-    if WELCOME_MESSAGE.len() > n_cols {
-        msg.truncate(n_cols);
+    if WELCOME_MESSAGE.len() > n_cols as usize {
+        msg.truncate(n_cols as usize);
     } else {
         write_padding(s, n_cols)?;
     }
     write!(s, "{}\r\n", msg)
 }
 
-fn write_padding(s: &mut String, n_cols: usize) -> std::fmt::Result {
-    let padding = (n_cols - WELCOME_MESSAGE.len()) / 2;
+fn write_padding(s: &mut String, n_cols: u16) -> std::fmt::Result {
+    let padding = (n_cols as usize - WELCOME_MESSAGE.len()) / 2;
     if padding > 0 {
         write!(s, "~")?;
         let mut space = String::with_capacity(padding - 1);
@@ -108,49 +106,6 @@ fn write_padding(s: &mut String, n_cols: usize) -> std::fmt::Result {
     Ok(())
 }
 
-fn get_term_size() -> (usize, usize) {
-    if let Some((w, h)) = term_size::dimensions() {
-        return (w, h);
-    } else {
-        die("Unable to get term size");
-    }
-}
-
-fn get_term_config() -> Termios {
-    match Termios::from_fd(STDIN_FILENO as i32) {
-        Err(err) => die_with_err("Couldn't get the terminal configuration", &err),
-        Ok(config) => config,
-    }
-}
-
-///Enables raw mode and disables canonical mode as well as other things
-fn prepare_term_config() {
-    let mut config = get_term_config();
-    config.c_iflag &= !(IXON | ICRNL);
-    config.c_oflag &= !(OPOST);
-    config.c_lflag &= !(ECHO | ICANON | IEXTEN | ISIG);
-    set_term_config(&mut config);
-}
-
-fn set_term_config(config: &mut Termios) {
-    if let Err(err) = tcsetattr(STDIN_FILENO as i32, TCSAFLUSH as i32, config) {
-        die_with_err("Couldn't set the terminal configuration", &err);
-    }
-}
-
 fn control_key(key: u8) -> u8 {
     key & 0x1f
-}
-
-fn die_with_err<T>(msg: &'static str, err: &T) -> !
-where
-    T: Error,
-{
-    clear_screen();
-    panic!("{}: {}", msg, err);
-}
-
-fn die(msg: &'static str) -> ! {
-    clear_screen();
-    panic!(msg);
 }
