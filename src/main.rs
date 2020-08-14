@@ -8,15 +8,16 @@ use termios::{
 };
 
 const STDIN_FILENO: u32 = 0;
+const WELCOME_MESSAGE: &'static str = "Tinate Is Not A Text Editor";
 
 fn main() -> Result<(), io::Error> {
     let original_config = get_term_config();
     prepare_term_config();
     let _will_get_dropped = AtExit { original_config };
 
-    let (_n_cols, n_rows) = get_term_size();
+    let (n_cols, n_rows) = get_term_size();
     loop {
-        refresh_screen(n_rows);
+        refresh_screen(n_rows, n_cols);
         if let None = process_key() {
             break Ok(());
         }
@@ -53,10 +54,10 @@ fn read_key() -> u8 {
     }
 }
 
-fn refresh_screen(n_rows: usize) {
+fn refresh_screen(n_rows: usize, n_cols: usize) {
     clear_screen();
 
-    if let Err(err) = draw_rows(n_rows) {
+    if let Err(err) = draw_rows(n_rows, n_cols) {
         die_with_err("Couldn't refresh the screen", &err);
     }
 
@@ -70,13 +71,40 @@ fn clear_screen() {
     io::stdout().flush().expect("Couldn't flush the stdout");
 }
 
-fn draw_rows(n_rows: usize) -> std::fmt::Result {
+fn draw_rows(n_rows: usize, n_cols: usize) -> std::fmt::Result {
     let mut s = String::new();
-    for _i in 0..n_rows - 1 {
-        write!(&mut s, "~\r\n")?;
+    for i in 0..n_rows - 1 {
+        if i == n_rows / 3 {
+            add_welcome_message(&mut s, n_cols)?;
+        } else {
+            write!(&mut s, "~\r\n")?;
+        }
     }
     write!(&mut s, "~")?;
     print!("{}", s);
+    Ok(())
+}
+
+fn add_welcome_message(s: &mut String, n_cols: usize) -> std::fmt::Result {
+    let mut msg = String::from(WELCOME_MESSAGE);
+    if WELCOME_MESSAGE.len() > n_cols {
+        msg.truncate(n_cols);
+    } else {
+        write_padding(s, n_cols)?;
+    }
+    write!(s, "{}\r\n", msg)
+}
+
+fn write_padding(s: &mut String, n_cols: usize) -> std::fmt::Result {
+    let padding = (n_cols - WELCOME_MESSAGE.len()) / 2;
+    if padding > 0 {
+        write!(s, "~")?;
+        let mut space = String::with_capacity(padding - 1);
+        for _i in 0..padding - 1 {
+            space.push(' ');
+        }
+        write!(s, "{}", space)?;
+    }
     Ok(())
 }
 
