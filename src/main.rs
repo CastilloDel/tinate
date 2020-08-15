@@ -11,7 +11,6 @@ use crossterm::{
 use std::fmt::Write as fmt_write;
 use std::io;
 use std::io::prelude::*;
-use std::io::Write;
 use std::process::exit;
 use std::sync::atomic::{AtomicU16, Ordering::Relaxed};
 
