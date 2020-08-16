@@ -14,11 +14,12 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::process::exit;
-use std::sync::atomic::{AtomicU16, Ordering::Relaxed};
+use std::sync::atomic::{AtomicU16, AtomicUsize, Ordering::Relaxed};
 
 const WELCOME_MESSAGE: &'static str = "Tinate Is Not A Text Editor";
 static X: AtomicU16 = AtomicU16::new(0);
 static Y: AtomicU16 = AtomicU16::new(0);
+static ROW_OFFSET: AtomicUsize = AtomicUsize::new(0);
 
 fn main() -> Result<()> {
     execute!(io::stdout(), EnterAlternateScreen)?;
@@ -77,11 +78,8 @@ fn read_key() -> Result<u8> {
 }
 
 fn refresh_screen(buf: &Vec<String>) -> Result<()> {
-    queue!(io::stdout(), MoveTo(0, 0))?;
-
     draw_rows(buf)?;
 
-    queue!(io::stdout(), MoveTo(X.load(Relaxed), Y.load(Relaxed)))?;
     io::stdout().flush()?;
     Ok(())
 }
@@ -90,10 +88,12 @@ fn draw_rows(buf: &Vec<String>) -> Result<()> {
     let mut s = String::new();
     let (n_cols, n_rows) = term_size()?;
     let (n_cols, n_rows) = (n_cols as usize, n_rows as usize);
+    queue!(s, MoveTo(0, 0))?;
+    let row_offset = ROW_OFFSET.load(Relaxed);
     for i in 0..n_rows {
         queue!(s, Clear(ClearType::CurrentLine))?;
-        if i < buf.len() {
-            let mut truncated_line = buf[i].clone();
+        if i < buf.len() - row_offset {
+            let mut truncated_line = buf[i + row_offset].clone();
             truncated_line.truncate(n_cols);
             if i == n_rows - 1 {
                 write!(&mut s, "{}\r", &truncated_line)?;
@@ -110,6 +110,7 @@ fn draw_rows(buf: &Vec<String>) -> Result<()> {
             }
         }
     }
+    queue!(s, MoveTo(X.load(Relaxed), Y.load(Relaxed)))?;
     print!("{}", s);
     Ok(())
 }
@@ -144,9 +145,23 @@ fn move_cursor(key: u8) -> Result<()> {
     match key {
         key if key == 'h' as u8 => X.store(if x > 0 { x - 1 } else { 0 }, Relaxed),
         key if key == 'j' as u8 => {
-            Y.store(if y < (n_rows - 1) { y + 1 } else { n_rows - 1 }, Relaxed);
+            if y < (n_rows - 1) {
+                Y.store(y + 1, Relaxed);
+            } else {
+                ROW_OFFSET.fetch_add(1, Relaxed);
+                Y.store(n_rows - 1, Relaxed);
+            }
         }
-        key if key == 'k' as u8 => Y.store(if y > 0 { y - 1 } else { 0 }, Relaxed),
+        key if key == 'k' as u8 => {
+            if y > 0 {
+                Y.store(y - 1, Relaxed);
+            } else {
+                if ROW_OFFSET.load(Relaxed) > 0 {
+                    ROW_OFFSET.fetch_sub(1, Relaxed);
+                }
+                Y.store(0, Relaxed);
+            }
+        }
         key if key == 'l' as u8 => {
             X.store(if x < (n_cols - 1) { x + 1 } else { n_cols - 1 }, Relaxed)
         }
