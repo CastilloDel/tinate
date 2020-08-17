@@ -8,6 +8,7 @@ use crossterm::{
     },
     Result,
 };
+use std::cmp::min;
 use std::env;
 use std::fmt::Write as fmt_write;
 use std::fs::File;
@@ -20,6 +21,7 @@ const WELCOME_MESSAGE: &'static str = "Tinate Is Not A Text Editor";
 static X: AtomicU16 = AtomicU16::new(0);
 static Y: AtomicU16 = AtomicU16::new(0);
 static ROW_OFFSET: AtomicUsize = AtomicUsize::new(0);
+static COL_OFFSET: AtomicUsize = AtomicUsize::new(0);
 
 fn main() -> Result<()> {
     execute!(io::stdout(), EnterAlternateScreen)?;
@@ -90,15 +92,21 @@ fn draw_rows(buf: &Vec<String>) -> Result<()> {
     let (n_cols, n_rows) = (n_cols as usize, n_rows as usize);
     queue!(s, MoveTo(0, 0))?;
     let row_offset = ROW_OFFSET.load(Relaxed);
+    let col_offset = COL_OFFSET.load(Relaxed);
     for i in 0..n_rows {
         queue!(s, Clear(ClearType::CurrentLine))?;
-        if i < buf.len() - row_offset {
-            let mut truncated_line = buf[i + row_offset].clone();
-            truncated_line.truncate(n_cols);
+        if i < buf.len() - min(row_offset, buf.len()) {
+            let mut trunc_line = buf[i + row_offset].clone();
+            trunc_line.truncate(n_cols + col_offset);
+            if col_offset > 0 {
+                trunc_line = trunc_line.chars().rev().collect();
+                trunc_line.truncate(trunc_line.len() - min(col_offset, trunc_line.len()));
+                trunc_line = trunc_line.chars().rev().collect();
+            }
             if i == n_rows - 1 {
-                write!(&mut s, "{}\r", &truncated_line)?;
+                write!(&mut s, "{}\r", &trunc_line)?;
             } else {
-                write!(&mut s, "{}\r\n", &truncated_line)?;
+                write!(&mut s, "{}\r\n", &trunc_line)?;
             }
         } else {
             if buf.len() == 0 && i == n_rows / 3 {
@@ -143,7 +151,18 @@ fn move_cursor(key: u8) -> Result<()> {
     let x = X.load(Relaxed);
     let y = Y.load(Relaxed);
     match key {
-        key if key == 'h' as u8 => X.store(if x > 0 { x - 1 } else { 0 }, Relaxed),
+        key if key == 'h' as u8 => {
+            if x > 0 {
+                X.store(x - 1, Relaxed);
+            } else {
+                if COL_OFFSET.load(Relaxed) > 0 {
+                    COL_OFFSET.fetch_sub(1, Relaxed);
+                }
+                if x > 0 {
+                    X.store(0, Relaxed);
+                }
+            }
+        }
         key if key == 'j' as u8 => {
             if y < (n_rows - 1) {
                 Y.store(y + 1, Relaxed);
@@ -159,11 +178,18 @@ fn move_cursor(key: u8) -> Result<()> {
                 if ROW_OFFSET.load(Relaxed) > 0 {
                     ROW_OFFSET.fetch_sub(1, Relaxed);
                 }
-                Y.store(0, Relaxed);
+                if y > 0 {
+                    Y.store(0, Relaxed);
+                }
             }
         }
         key if key == 'l' as u8 => {
-            X.store(if x < (n_cols - 1) { x + 1 } else { n_cols - 1 }, Relaxed)
+            if x < (n_cols - 1) {
+                X.store(x + 1, Relaxed);
+            } else {
+                COL_OFFSET.fetch_add(1, Relaxed);
+                X.store(n_cols - 1, Relaxed);
+            }
         }
         _ => {}
     }
