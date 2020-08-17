@@ -96,13 +96,7 @@ fn draw_rows(buf: &Vec<String>) -> Result<()> {
     for i in 0..n_rows {
         queue!(s, Clear(ClearType::CurrentLine))?;
         if i < buf.len() - min(row_offset, buf.len()) {
-            let mut trunc_line = buf[i + row_offset].clone();
-            trunc_line.truncate(n_cols + col_offset);
-            if col_offset > 0 {
-                trunc_line = trunc_line.chars().rev().collect();
-                trunc_line.truncate(trunc_line.len() - min(col_offset, trunc_line.len()));
-                trunc_line = trunc_line.chars().rev().collect();
-            }
+            let trunc_line = trunc_line(&buf[i + row_offset], n_cols, col_offset);
             if i == n_rows - 1 {
                 write!(&mut s, "{}\r", &trunc_line)?;
             } else {
@@ -118,9 +112,22 @@ fn draw_rows(buf: &Vec<String>) -> Result<()> {
             }
         }
     }
+    if buf.len() != 0 {
+        recalculate_cursor_pos(buf);
+    }
     queue!(s, MoveTo(X.load(Relaxed), Y.load(Relaxed)))?;
     print!("{}", s);
     Ok(())
+}
+fn trunc_line(line: &str, n_cols: usize, col_offset: usize) -> String {
+    let mut trunc_line = line.to_owned();
+    trunc_line.truncate(n_cols + col_offset);
+    if col_offset > 0 {
+        trunc_line = trunc_line.chars().rev().collect();
+        trunc_line.truncate(trunc_line.len() - min(col_offset, trunc_line.len()));
+        trunc_line = trunc_line.chars().rev().collect();
+    }
+    trunc_line
 }
 
 fn add_welcome_message(s: &mut String, n_cols: usize) -> std::fmt::Result {
@@ -144,6 +151,15 @@ fn write_padding(s: &mut String, n_cols: usize) -> std::fmt::Result {
         write!(s, "{}", space)?;
     }
     Ok(())
+}
+
+fn recalculate_cursor_pos(buf: &Vec<String>) {
+    let x = X.load(Relaxed) as usize;
+    let y = Y.load(Relaxed) as usize;
+    let row_offset = ROW_OFFSET.load(Relaxed);
+    if x + COL_OFFSET.load(Relaxed) > buf[y + row_offset].len() {
+        X.store(buf[y + row_offset].len() as u16, Relaxed);
+    }
 }
 
 fn move_cursor(key: u8) -> Result<()> {
