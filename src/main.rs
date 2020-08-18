@@ -157,8 +157,15 @@ fn recalculate_cursor_pos(buf: &Vec<String>) {
     let x = X.load(Relaxed) as usize;
     let y = Y.load(Relaxed) as usize;
     let row_offset = ROW_OFFSET.load(Relaxed);
-    if x + COL_OFFSET.load(Relaxed) > buf[y + row_offset].len() {
-        X.store(buf[y + row_offset].len() as u16, Relaxed);
+    let row_pos = y + row_offset; //position in the file
+    if row_pos < buf.len() {
+        if x + COL_OFFSET.load(Relaxed) > buf[row_pos].len() {
+            X.store(buf[y + row_offset].len() as u16, Relaxed);
+        }
+    } else {
+        if x > 0 {
+            X.store(0, Relaxed);
+        }
     }
 }
 
