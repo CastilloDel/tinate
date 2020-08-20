@@ -1,6 +1,7 @@
 use crossterm::terminal::size as term_size;
 use crossterm::{
     cursor::MoveTo,
+    event::{read, Event, KeyCode, KeyEvent, KeyModifiers},
     execute, queue,
     terminal::{
         disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
@@ -36,7 +37,7 @@ fn main() -> Result<()> {
 
     loop {
         refresh_screen(&buffer)?;
-        process_key()?;
+        process_event()?;
     }
 }
 
@@ -58,25 +59,22 @@ fn load_to_buf(path: &str) -> io::Result<Vec<String>> {
     Ok(buffer)
 }
 
-fn process_key() -> Result<()> {
-    let key = read_key()?;
+fn process_event() -> Result<()> {
+    let event = read()?;
 
-    match key {
-        key if key == control_key('q' as u8) => {
+    match event {
+        Event::Key(KeyEvent {
+            modifiers: KeyModifiers::CONTROL,
+            code: KeyCode::Char('q'),
+        }) => {
             execute!(io::stdout(), LeaveAlternateScreen)?;
             //exit won't call destructors
             disable_raw_mode()?;
             exit(0);
         }
-        key if is_movement_key(key) => move_cursor(key),
+        Event::Key(key) if is_movement_key(&key) => move_cursor(key),
         _ => Ok(()),
     }
-}
-
-fn read_key() -> Result<u8> {
-    let mut key = [0; 1];
-    io::stdin().read_exact(&mut key)?;
-    Ok(key[0])
 }
 
 fn refresh_screen(buf: &Vec<String>) -> Result<()> {
@@ -169,12 +167,12 @@ fn recalculate_cursor_pos(buf: &Vec<String>) {
     }
 }
 
-fn move_cursor(key: u8) -> Result<()> {
+fn move_cursor(key: KeyEvent) -> Result<()> {
     let (n_cols, n_rows) = term_size()?;
     let x = X.load(Relaxed);
     let y = Y.load(Relaxed);
-    match key {
-        key if key == 'h' as u8 => {
+    match key.code {
+        KeyCode::Char('h') => {
             if x > 0 {
                 X.store(x - 1, Relaxed);
             } else {
@@ -186,7 +184,7 @@ fn move_cursor(key: u8) -> Result<()> {
                 }
             }
         }
-        key if key == 'j' as u8 => {
+        KeyCode::Char('j') => {
             if y < (n_rows - 1) {
                 Y.store(y + 1, Relaxed);
             } else {
@@ -194,7 +192,7 @@ fn move_cursor(key: u8) -> Result<()> {
                 Y.store(n_rows - 1, Relaxed);
             }
         }
-        key if key == 'k' as u8 => {
+        KeyCode::Char('k') => {
             if y > 0 {
                 Y.store(y - 1, Relaxed);
             } else {
@@ -206,7 +204,7 @@ fn move_cursor(key: u8) -> Result<()> {
                 }
             }
         }
-        key if key == 'l' as u8 => {
+        KeyCode::Char('l') => {
             if x < (n_cols - 1) {
                 X.store(x + 1, Relaxed);
             } else {
@@ -219,10 +217,12 @@ fn move_cursor(key: u8) -> Result<()> {
     Ok(())
 }
 
-fn control_key(key: u8) -> u8 {
-    key & 0x1f
-}
-
-fn is_movement_key(key: u8) -> bool {
-    key == 'h' as u8 || key == 'j' as u8 || key == 'k' as u8 || key == 'l' as u8
+fn is_movement_key(key: &KeyEvent) -> bool {
+    if key.modifiers != KeyModifiers::NONE {
+        return false;
+    }
+    key.code == KeyCode::Char('h')
+        || key.code == KeyCode::Char('j')
+        || key.code == KeyCode::Char('k')
+        || key.code == KeyCode::Char('l')
 }
