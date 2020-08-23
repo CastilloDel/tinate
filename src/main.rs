@@ -47,7 +47,9 @@ impl Editor {
         let mut editor = Editor::new();
         let args: Vec<String> = env::args().collect();
         if args.len() >= 2 {
-            editor.load_to_buf(&args[1]).expect("Invalid path or file");
+            editor.load_to_buf(&args[1]).expect(
+                "Invalid path or file. Keep in mind that tinate can only read Unicode valid files",
+            );
         }
         loop {
             editor.refresh_screen()?;
