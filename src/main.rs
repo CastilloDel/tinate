@@ -18,6 +18,7 @@ use std::io::prelude::*;
 use std::process::exit;
 
 const WELCOME_MESSAGE: &'static str = "Tinate Is Not A Text Editor";
+const TAB_SZ: usize = 4;
 
 fn main() -> Result<()> {
     execute!(io::stdout(), EnterAlternateScreen)?;
@@ -28,6 +29,7 @@ fn main() -> Result<()> {
 
 struct Editor {
     buffer: Vec<String>,
+    render_buffer: Vec<String>,
     x_cursor_pos: u16,
     y_cursor_pos: u16,
     row_offset: usize,
@@ -57,9 +59,10 @@ impl Editor {
         }
     }
 
-    fn new() -> Editor {
+    fn new() -> Self {
         Editor {
             buffer: Vec::new(),
+            render_buffer: Vec::new(),
             x_cursor_pos: 0,
             y_cursor_pos: 0,
             row_offset: 0,
@@ -73,7 +76,24 @@ impl Editor {
             .lines()
             .map(|line_result| line_result.map(|line| line.trim_end().to_string()))
             .collect::<io::Result<Vec<String>>>()?;
+        self.update_render_buf();
         Ok(())
+    }
+
+    fn update_render_buf(&mut self) {
+        for (index, line) in self.buffer.iter().enumerate() {
+            self.render_buffer.push(String::new());
+            for c in line.chars() {
+                if c == '\t' {
+                    self.render_buffer[index].push(' ');
+                    while self.render_buffer[index].len() % TAB_SZ != 0 {
+                        self.render_buffer[index].push(' ');
+                    }
+                } else {
+                    self.render_buffer[index].push(c);
+                }
+            }
+        }
     }
 
     fn process_event(&mut self) -> Result<()> {
@@ -108,16 +128,19 @@ impl Editor {
         queue!(s, MoveTo(0, 0))?;
         for i in 0..n_rows {
             queue!(s, Clear(ClearType::CurrentLine))?;
-            if i < self.buffer.len() - min(self.row_offset, self.buffer.len()) {
-                let trunc_line =
-                    Editor::trunc_line(&self.buffer[i + self.row_offset], n_cols, self.col_offset);
+            if i < self.render_buffer.len() - min(self.row_offset, self.render_buffer.len()) {
+                let trunc_line = Editor::trunc_line(
+                    &self.render_buffer[i + self.row_offset],
+                    n_cols,
+                    self.col_offset,
+                );
                 if i == n_rows - 1 {
                     write!(&mut s, "{}\r", &trunc_line)?;
                 } else {
                     write!(&mut s, "{}\r\n", &trunc_line)?;
                 }
             } else {
-                if self.buffer.len() == 0 && i == n_rows / 3 {
+                if self.render_buffer.len() == 0 && i == n_rows / 3 {
                     Editor::add_welcome_message(&mut s, n_cols)?;
                 } else if i == n_rows - 1 {
                     write!(&mut s, "~")?;
@@ -126,13 +149,14 @@ impl Editor {
                 }
             }
         }
-        if self.buffer.len() != 0 {
+        if self.render_buffer.len() != 0 {
             self.recalculate_cursor_pos();
         }
         queue!(s, MoveTo(self.x_cursor_pos, self.y_cursor_pos))?;
         print!("{}", s);
         Ok(())
     }
+
     fn trunc_line(line: &str, n_cols: usize, col_offset: usize) -> String {
         let mut trunc_line = line.to_owned();
         trunc_line.truncate(n_cols + col_offset);
@@ -169,10 +193,10 @@ impl Editor {
 
     fn recalculate_cursor_pos(&mut self) {
         let row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
-        if row_pos < self.buffer.len() {
-            if self.x_cursor_pos as usize + self.col_offset > self.buffer[row_pos].len() {
+        if row_pos < self.render_buffer.len() {
+            if self.x_cursor_pos as usize + self.col_offset > self.render_buffer[row_pos].len() {
                 self.x_cursor_pos =
-                    self.buffer[self.y_cursor_pos as usize + self.row_offset].len() as u16;
+                    self.render_buffer[self.y_cursor_pos as usize + self.row_offset].len() as u16;
             }
         } else {
             if self.x_cursor_pos > 0 {
