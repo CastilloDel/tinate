@@ -134,19 +134,15 @@ impl Editor {
                     n_cols,
                     self.col_offset,
                 );
-                if i == n_rows - 1 {
-                    write!(&mut s, "{}\r", &trunc_line)?;
-                } else {
-                    write!(&mut s, "{}\r\n", &trunc_line)?;
-                }
+                write!(&mut s, "{}\r", &trunc_line)?;
             } else {
                 if self.render_buffer.len() == 0 && i == n_rows / 3 {
                     Editor::add_welcome_message(&mut s, n_cols)?;
-                } else if i == n_rows - 1 {
-                    write!(&mut s, "~")?;
-                } else {
-                    write!(&mut s, "~\r\n")?;
                 }
+                write!(&mut s, "~\r")?;
+            }
+            if i != n_rows - 1 {
+                write!(&mut s, "\n")?;
             }
         }
         if self.render_buffer.len() != 0 {
