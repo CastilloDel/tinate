@@ -190,11 +190,14 @@ impl Editor {
     }
 
     fn draw_status_bar(&self, s: &mut String, n_cols: usize) -> Result<()> {
-        write!(s, "{}", "Normal mode ".negative())?;
-        write!(s, "{}", self.file_name.clone().negative())?;
-        for _ in 0..n_cols - 12 - self.file_name.len() {
-            write!(s, "{}", " ".negative())?;
+        let mut bar = String::new();
+        write!(bar, "Normal mode ")?;
+        write!(bar, "{}", self.file_name)?;
+        bar.truncate(n_cols);
+        while n_cols - bar.len() > 0 {
+            write!(bar, " ")?;
         }
+        write!(s, "{}", bar.negative())?;
         Ok(())
     }
 
