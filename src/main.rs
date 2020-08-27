@@ -35,6 +35,7 @@ struct Editor {
     y_cursor_pos: u16,
     row_offset: usize,
     col_offset: usize,
+    file_name: String,
 }
 
 impl Drop for Editor {
@@ -68,11 +69,13 @@ impl Editor {
             y_cursor_pos: 0,
             row_offset: 0,
             col_offset: 0,
+            file_name: String::new(),
         }
     }
 
     fn load_to_buf(&mut self, path: &str) -> io::Result<()> {
-        let file = File::open(path)?;
+        self.file_name = path.to_owned();
+        let file = File::open(&self.file_name)?;
         self.buffer = io::BufReader::new(file)
             .lines()
             .map(|line_result| line_result.map(|line| line.trim_end().to_string()))
@@ -187,8 +190,9 @@ impl Editor {
     }
 
     fn draw_status_bar(&self, s: &mut String, n_cols: usize) -> Result<()> {
-        write!(s, "{}", "Normal mode".negative())?;
-        for _ in 0..n_cols - 11 {
+        write!(s, "{}", "Normal mode ".negative())?;
+        write!(s, "{}", self.file_name.clone().negative())?;
+        for _ in 0..n_cols - 12 - self.file_name.len() {
             write!(s, "{}", " ".negative())?;
         }
         Ok(())
