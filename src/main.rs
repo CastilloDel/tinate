@@ -275,3 +275,15 @@ impl Editor {
             || key.code == KeyCode::Char('l')
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn status_bar_not_panic_with_litte_windows() -> Result<()> {
+        let editor = Editor::new();
+        let mut s = String::new();
+        editor.draw_status_bar(&mut s, 0)
+    }
+}
