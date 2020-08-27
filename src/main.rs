@@ -3,6 +3,7 @@ use crossterm::{
     cursor::MoveTo,
     event::{read, Event, KeyCode, KeyEvent, KeyModifiers},
     execute, queue,
+    style::Styler,
     terminal::{
         disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
         LeaveAlternateScreen,
@@ -126,7 +127,7 @@ impl Editor {
         let (n_cols, n_rows) = term_size()?;
         let (n_cols, n_rows) = (n_cols as usize, n_rows as usize);
         queue!(s, MoveTo(0, 0))?;
-        for i in 0..n_rows {
+        for i in 0..n_rows - 1 {
             queue!(s, Clear(ClearType::CurrentLine))?;
             if i < self.render_buffer.len() - min(self.row_offset, self.render_buffer.len()) {
                 let trunc_line = Editor::trunc_line(
@@ -134,17 +135,15 @@ impl Editor {
                     n_cols,
                     self.col_offset,
                 );
-                write!(&mut s, "{}\r", &trunc_line)?;
+                write!(&mut s, "{}\r\n", &trunc_line)?;
             } else {
                 if self.render_buffer.len() == 0 && i == n_rows / 3 {
                     Editor::add_welcome_message(&mut s, n_cols)?;
                 }
-                write!(&mut s, "~\r")?;
-            }
-            if i != n_rows - 1 {
-                write!(&mut s, "\n")?;
+                write!(&mut s, "~\r\n")?;
             }
         }
+        self.draw_status_bar(&mut s, n_cols)?;
         if self.render_buffer.len() != 0 {
             self.recalculate_cursor_pos();
         }
@@ -187,6 +186,14 @@ impl Editor {
         Ok(())
     }
 
+    fn draw_status_bar(&self, s: &mut String, n_cols: usize) -> Result<()> {
+        write!(s, "{}", "Normal mode".negative())?;
+        for _ in 0..n_cols - 11 {
+            write!(s, "{}", " ".negative())?;
+        }
+        Ok(())
+    }
+
     fn recalculate_cursor_pos(&mut self) {
         let row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
         if row_pos < self.render_buffer.len() {
@@ -203,6 +210,7 @@ impl Editor {
 
     fn move_cursor(&mut self, key: KeyEvent) -> Result<()> {
         let (n_cols, n_rows) = term_size()?;
+        let n_rows = n_rows - 1; //Space for the status bar
         match key.code {
             KeyCode::Char('h') => {
                 if self.x_cursor_pos > 0 {
