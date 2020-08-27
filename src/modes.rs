@@ -1,8 +1,10 @@
 use std::fmt::{Display, Formatter, Result};
 
+#[derive(PartialEq, Clone, Copy)]
 pub enum Mode {
     Normal,
     Insert,
+    Command,
 }
 
 impl Display for Mode {
@@ -10,6 +12,7 @@ impl Display for Mode {
         match self {
             Mode::Normal => write!(f, "Normal"),
             Mode::Insert => write!(f, "Insert"),
+            Mode::Command => write!(f, "Command"),
         }
     }
 }

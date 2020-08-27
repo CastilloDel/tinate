@@ -39,6 +39,7 @@ struct Editor {
     col_offset: usize,
     file_name: String,
     mode: Mode,
+    command_buffer: String,
 }
 
 impl Drop for Editor {
@@ -74,6 +75,7 @@ impl Editor {
             col_offset: 0,
             file_name: String::new(),
             mode: Mode::Normal,
+            command_buffer: String::new(),
         }
     }
 
@@ -107,18 +109,40 @@ impl Editor {
     fn process_event(&mut self) -> Result<()> {
         let event = read()?;
 
-        match event {
-            Event::Key(KeyEvent {
-                modifiers: KeyModifiers::CONTROL,
-                code: KeyCode::Char('q'),
-            }) => {
-                execute!(io::stdout(), LeaveAlternateScreen)?;
-                //exit won't call destructors
-                disable_raw_mode()?;
-                exit(0);
-            }
-            Event::Key(key) if Editor::is_movement_key(&key) => self.move_cursor(key),
-            _ => Ok(()),
+        match self.mode {
+            Mode::Normal => match event {
+                Event::Key(KeyEvent {
+                    code: KeyCode::Char(':'),
+                    ..
+                }) => {
+                    self.mode = Mode::Command;
+                    self.command_buffer = String::new();
+                    self.command_buffer.push(':');
+                    Ok(())
+                }
+                Event::Key(key) if Editor::is_movement_key(&key) => self.move_cursor(key),
+                _ => Ok(()),
+            },
+            Mode::Command => match event {
+                Event::Key(KeyEvent {
+                    code: KeyCode::Char(key),
+                    ..
+                }) => {
+                    self.command_buffer.push(key);
+                    Ok(())
+                }
+                Event::Key(KeyEvent {
+                    code: KeyCode::Enter,
+                    ..
+                }) => {
+                    self.execute_command()?;
+                    Ok(())
+                }
+                _ => Ok(()),
+            },
+            Mode::Insert => match event {
+                _ => Ok(()),
+            },
         }
     }
 
@@ -195,8 +219,12 @@ impl Editor {
 
     fn draw_status_bar(&self, s: &mut String, n_cols: usize) -> Result<()> {
         let mut bar = String::new();
-        write!(bar, "{} mode ", self.mode)?;
-        write!(bar, "{}", self.file_name)?;
+        if self.mode == Mode::Command {
+            bar = self.command_buffer.clone();
+        } else {
+            write!(bar, "{} mode ", self.mode)?;
+            write!(bar, "{}", self.file_name)?;
+        }
         let row = self.row_offset + self.y_cursor_pos as usize + 1;
         let row = String::from(" ") + &row.to_string();
         bar.truncate(n_cols - min(row.len(), n_cols));
@@ -267,6 +295,21 @@ impl Editor {
             _ => {}
         }
         Ok(())
+    }
+
+    fn execute_command(&mut self) -> Result<()> {
+        match self.command_buffer.as_ref() {
+            ":q" => {
+                execute!(io::stdout(), LeaveAlternateScreen)?;
+                //exit won't call destructors
+                disable_raw_mode()?;
+                exit(0);
+            }
+            _ => {
+                self.mode = Mode::Normal;
+                Ok(())
+            }
+        }
     }
 
     fn is_movement_key(key: &KeyEvent) -> bool {
