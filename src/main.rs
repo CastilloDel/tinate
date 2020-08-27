@@ -193,10 +193,13 @@ impl Editor {
         let mut bar = String::new();
         write!(bar, "Normal mode ")?;
         write!(bar, "{}", self.file_name)?;
-        bar.truncate(n_cols);
-        while n_cols - bar.len() > 0 {
+        let row = self.row_offset + self.y_cursor_pos as usize + 1;
+        let row = String::from(" ") + &row.to_string();
+        bar.truncate(n_cols - min(row.len(), n_cols));
+        while n_cols - bar.len() > row.len() {
             write!(bar, " ")?;
         }
+        write!(bar, "{}", row)?;
         write!(s, "{}", bar.negative())?;
         Ok(())
     }
