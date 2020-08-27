@@ -17,6 +17,8 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::process::exit;
+mod modes;
+use modes::Mode;
 
 const WELCOME_MESSAGE: &'static str = "Tinate Is Not A Text Editor";
 const TAB_SZ: usize = 4;
@@ -36,6 +38,7 @@ struct Editor {
     row_offset: usize,
     col_offset: usize,
     file_name: String,
+    mode: Mode,
 }
 
 impl Drop for Editor {
@@ -70,6 +73,7 @@ impl Editor {
             row_offset: 0,
             col_offset: 0,
             file_name: String::new(),
+            mode: Mode::Normal,
         }
     }
 
@@ -191,7 +195,7 @@ impl Editor {
 
     fn draw_status_bar(&self, s: &mut String, n_cols: usize) -> Result<()> {
         let mut bar = String::new();
-        write!(bar, "Normal mode ")?;
+        write!(bar, "{} mode ", self.mode)?;
         write!(bar, "{}", self.file_name)?;
         let row = self.row_offset + self.y_cursor_pos as usize + 1;
         let row = String::from(" ") + &row.to_string();
