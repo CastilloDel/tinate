@@ -261,9 +261,7 @@ impl Editor {
                     if self.col_offset > 0 {
                         self.col_offset -= 1;
                     }
-                    if self.x_cursor_pos > 0 {
-                        self.x_cursor_pos = 0;
-                    }
+                    self.x_cursor_pos = 0;
                 }
             }
             KeyCode::Char('j') => {
@@ -280,9 +278,7 @@ impl Editor {
                     if self.row_offset > 0 {
                         self.row_offset -= 1;
                     }
-                    if self.y_cursor_pos > 0 {
-                        self.y_cursor_pos = 0;
-                    }
+                    self.y_cursor_pos = 0;
                 }
             }
             KeyCode::Char('l') => {
