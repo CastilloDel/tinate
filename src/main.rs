@@ -121,6 +121,13 @@ impl Editor {
                     Ok(())
                 }
                 Event::Key(key) if Editor::is_movement_key(&key) => self.move_cursor(key),
+                Event::Key(KeyEvent {
+                    code: KeyCode::Char('i'),
+                    ..
+                }) => {
+                    self.mode = Mode::Insert;
+                    Ok(())
+                }
                 _ => Ok(()),
             },
             Mode::Command => match event {
@@ -141,6 +148,19 @@ impl Editor {
                 _ => Ok(()),
             },
             Mode::Insert => match event {
+                Event::Key(KeyEvent {
+                    code: KeyCode::Char(c),
+                    ..
+                }) => {
+                    self.insert_char(c);
+                    Ok(())
+                }
+                Event::Key(KeyEvent {
+                    code: KeyCode::Esc, ..
+                }) => {
+                    self.mode = Mode::Normal;
+                    Ok(())
+                }
                 _ => Ok(()),
             },
         }
@@ -306,6 +326,13 @@ impl Editor {
                 Ok(())
             }
         }
+    }
+
+    fn insert_char(&mut self, c: char) {
+        let row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
+        let col_pos = self.x_cursor_pos as usize + self.col_offset; //position in the file
+        self.render_buffer[row_pos].insert(col_pos, c);
+        self.x_cursor_pos += 1;
     }
 
     fn is_movement_key(key: &KeyEvent) -> bool {
