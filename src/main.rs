@@ -257,16 +257,15 @@ impl Editor {
     }
 
     fn recalculate_cursor_pos(&mut self) {
-        let row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
-        if row_pos < self.render_buffer.len() {
-            if self.x_cursor_pos as usize + self.col_offset > self.render_buffer[row_pos].len() {
-                self.x_cursor_pos =
-                    self.render_buffer[self.y_cursor_pos as usize + self.row_offset].len() as u16;
-            }
-        } else {
-            if self.x_cursor_pos > 0 {
-                self.x_cursor_pos = 0;
-            }
+        let mut row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
+        if row_pos >= self.render_buffer.len() {
+            self.y_cursor_pos = (self.render_buffer.len() - 1 - self.row_offset) as u16;
+            row_pos = self.y_cursor_pos as usize + self.row_offset;
+        }
+
+        if self.x_cursor_pos as usize + self.col_offset > self.render_buffer[row_pos].len() {
+            self.x_cursor_pos =
+                self.render_buffer[self.y_cursor_pos as usize + self.row_offset].len() as u16;
         }
     }
 
