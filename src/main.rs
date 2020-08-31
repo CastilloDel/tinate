@@ -398,6 +398,9 @@ impl Editor {
 
     fn translate_rend_index_to_buf(buf_line: &str, mut r_index: usize) -> usize {
         let mut render_pos = 0;
+        if buf_line.len() == 0 {
+            return 0;
+        }
         for (index, c) in buf_line.chars().enumerate() {
             if c == '\t' {
                 r_index -= min(TAB_SZ - 1 - (render_pos % TAB_SZ), r_index);
@@ -409,6 +412,9 @@ impl Editor {
                 return index;
             }
         }
+        if r_index == buf_line.len() {
+            return r_index;
+        }
         panic!(
             "Couldn't translate the index({}) to a valid index in the buffer line",
             r_index
@@ -416,6 +422,9 @@ impl Editor {
     }
 
     fn translate_buf_index_to_rend(buf_line: &str, b_index: usize) -> usize {
+        if buf_line.len() == 0 {
+            return 0;
+        }
         if b_index >= buf_line.len() {
             panic!(
                 "The index({}) is greater than the length of the line({})",
@@ -468,6 +477,13 @@ mod tests {
         assert_eq!(Editor::translate_rend_index_to_buf("\ta\ttt", 7), 2);
         assert_eq!(Editor::translate_rend_index_to_buf("\ta\ttt", 8), 3);
         assert_eq!(Editor::translate_rend_index_to_buf("\ta\ttt", 9), 4);
+        assert_eq!(Editor::translate_rend_index_to_buf("\ta\ttt", 10), 5);
+    }
+
+    #[test]
+    #[should_panic]
+    fn translate_to_buf_index_panic() {
+        Editor::translate_rend_index_to_buf("\ta\ttt", 11);
     }
 
     #[test]
@@ -477,5 +493,11 @@ mod tests {
         assert_eq!(Editor::translate_buf_index_to_rend("\ta\ttt", 2), 5);
         assert_eq!(Editor::translate_buf_index_to_rend("\ta\ttt", 3), 8);
         assert_eq!(Editor::translate_buf_index_to_rend("\ta\ttt", 4), 9);
+    }
+
+    #[test]
+    #[should_panic]
+    fn translate_to_rend_index_panic() {
+        Editor::translate_buf_index_to_rend("\ta\ttt", 5);
     }
 }
