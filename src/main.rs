@@ -10,7 +10,7 @@ use crossterm::{
     },
     Result,
 };
-use std::cmp::min;
+use std::cmp::{max, min};
 use std::env;
 use std::fmt::Write as fmt_write;
 use std::fs::File;
@@ -120,7 +120,9 @@ impl Editor {
                     self.command_buffer.push(':');
                     Ok(())
                 }
-                Event::Key(key) if Editor::is_movement_key(&key) => self.move_cursor(key),
+                Event::Key(key) if Editor::is_movement_key(&key) => {
+                    self.move_cursor_safely(key.code)
+                }
                 Event::Key(KeyEvent {
                     code: KeyCode::Char('i'),
                     ..
@@ -195,9 +197,6 @@ impl Editor {
             }
         }
         self.draw_status_bar(&mut s, n_cols)?;
-        if self.render_buffer.len() != 0 {
-            self.recalculate_cursor_pos();
-        }
         queue!(s, MoveTo(self.x_cursor_pos, self.y_cursor_pos))?;
         print!("{}", s);
         Ok(())
@@ -256,23 +255,17 @@ impl Editor {
         Ok(())
     }
 
-    fn recalculate_cursor_pos(&mut self) {
-        let mut row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
-        if row_pos >= self.render_buffer.len() {
-            self.y_cursor_pos = (self.render_buffer.len() - 1 - self.row_offset) as u16;
-            row_pos = self.y_cursor_pos as usize + self.row_offset;
-        }
-
-        if self.x_cursor_pos as usize + self.col_offset > self.render_buffer[row_pos].len() {
-            self.x_cursor_pos =
-                self.render_buffer[self.y_cursor_pos as usize + self.row_offset].len() as u16;
-        }
+    fn move_cursor_safely(&mut self, key: KeyCode) -> Result<()> {
+        self.move_cursor(key)?;
+        self.recalculate_cursor_pos();
+        self.avoid_tabs(key)?;
+        Ok(())
     }
 
-    fn move_cursor(&mut self, key: KeyEvent) -> Result<()> {
+    fn move_cursor(&mut self, key: KeyCode) -> Result<()> {
         let (n_cols, n_rows) = term_size()?;
         let n_rows = n_rows - 1; //Space for the status bar
-        match key.code {
+        match key {
             KeyCode::Char('h') => {
                 if self.x_cursor_pos > 0 {
                     self.x_cursor_pos -= 1;
@@ -312,6 +305,55 @@ impl Editor {
         Ok(())
     }
 
+    fn recalculate_cursor_pos(&mut self) {
+        let mut row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
+        if row_pos >= self.render_buffer.len() {
+            self.y_cursor_pos = (self.render_buffer.len() - 1 - self.row_offset) as u16;
+            row_pos = self.y_cursor_pos as usize + self.row_offset;
+        }
+
+        if self.x_cursor_pos as usize + self.col_offset >= self.render_buffer[row_pos].len() {
+            self.x_cursor_pos = max(
+                self.render_buffer[self.y_cursor_pos as usize + self.row_offset].len(),
+                1,
+            ) as u16
+                - 1;
+        }
+    }
+
+    fn avoid_tabs(&mut self, key: KeyCode) -> Result<()> {
+        let row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
+        if self.buffer[row_pos].is_empty() {
+            return Ok(());
+        }
+        let mut col_pos = self.x_cursor_pos as usize + self.col_offset; //position in the file
+        let buf_index = Editor::translate_rend_index_to_buf(&self.buffer[row_pos], col_pos);
+        if self.buffer[row_pos].chars().skip(buf_index).next() == Some('\t') {
+            match key {
+                KeyCode::Char('l')
+                    if Editor::translate_buf_index_to_rend(&self.buffer[row_pos], buf_index)
+                        != col_pos =>
+                {
+                    while Editor::translate_rend_index_to_buf(&self.buffer[row_pos], col_pos)
+                        != buf_index + 1
+                    {
+                        self.move_cursor(KeyCode::Char('l'))?;
+                        col_pos = self.x_cursor_pos as usize + self.col_offset; //position in the file
+                    }
+                }
+                _ => {
+                    let rend_index =
+                        Editor::translate_buf_index_to_rend(&self.buffer[row_pos], buf_index);
+                    while rend_index != col_pos {
+                        self.move_cursor(KeyCode::Char('h'))?;
+                        col_pos = self.x_cursor_pos as usize + self.col_offset; //position in the file
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn execute_command(&mut self) -> Result<()> {
         match self.command_buffer.as_ref() {
             ":q" => {
@@ -334,6 +376,47 @@ impl Editor {
         self.x_cursor_pos += 1;
     }
 
+    fn translate_rend_index_to_buf(buf_line: &str, mut r_index: usize) -> usize {
+        let mut render_pos = 0;
+        for (index, c) in buf_line.chars().enumerate() {
+            if c == '\t' {
+                r_index -= min(TAB_SZ - 1 - (render_pos % TAB_SZ), r_index);
+                render_pos += TAB_SZ - (render_pos % TAB_SZ);
+            } else {
+                render_pos += 1;
+            }
+            if r_index <= index {
+                return index;
+            }
+        }
+        panic!(
+            "Couldn't translate the index({}) to a valid index in the buffer line",
+            r_index
+        );
+    }
+
+    fn translate_buf_index_to_rend(buf_line: &str, b_index: usize) -> usize {
+        if b_index >= buf_line.len() {
+            panic!(
+                "The index({}) is greater than the length of the line({})",
+                b_index,
+                buf_line.len()
+            );
+        }
+        let mut r_index = 0;
+        for (index, c) in buf_line.chars().enumerate() {
+            if b_index == index {
+                return r_index;
+            }
+            if c == '\t' {
+                r_index += TAB_SZ - (r_index % TAB_SZ);
+            } else {
+                r_index += 1;
+            }
+        }
+        r_index
+    }
+
     fn is_movement_key(key: &KeyEvent) -> bool {
         if key.modifiers != KeyModifiers::NONE {
             return false;
@@ -354,5 +437,25 @@ mod tests {
         let editor = Editor::new();
         let mut s = String::new();
         editor.draw_status_bar(&mut s, 0)
+    }
+
+    #[test]
+    fn translate_to_buf_index() {
+        assert_eq!(Editor::translate_rend_index_to_buf("\ta\ttt", 0), 0);
+        assert_eq!(Editor::translate_rend_index_to_buf("\ta\ttt", 2), 0);
+        assert_eq!(Editor::translate_rend_index_to_buf("\ta\ttt", 3), 0);
+        assert_eq!(Editor::translate_rend_index_to_buf("\ta\ttt", 4), 1);
+        assert_eq!(Editor::translate_rend_index_to_buf("\ta\ttt", 7), 2);
+        assert_eq!(Editor::translate_rend_index_to_buf("\ta\ttt", 8), 3);
+        assert_eq!(Editor::translate_rend_index_to_buf("\ta\ttt", 9), 4);
+    }
+
+    #[test]
+    fn translate_to_rend_index() {
+        assert_eq!(Editor::translate_buf_index_to_rend("\ta\ttt", 0), 0);
+        assert_eq!(Editor::translate_buf_index_to_rend("\ta\ttt", 1), 4);
+        assert_eq!(Editor::translate_buf_index_to_rend("\ta\ttt", 2), 5);
+        assert_eq!(Editor::translate_buf_index_to_rend("\ta\ttt", 3), 8);
+        assert_eq!(Editor::translate_buf_index_to_rend("\ta\ttt", 4), 9);
     }
 }
