@@ -91,17 +91,22 @@ impl Editor {
     }
 
     fn update_render_buf(&mut self) {
-        for (index, line) in self.buffer.iter().enumerate() {
+        for index in 0..self.buffer.len() {
             self.render_buffer.push(String::new());
-            for c in line.chars() {
-                if c == '\t' {
+            self.update_render_row(index);
+        }
+    }
+
+    fn update_render_row(&mut self, index: usize) {
+        self.render_buffer[index].clear();
+        for c in self.buffer[index].chars() {
+            if c == '\t' {
+                self.render_buffer[index].push(' ');
+                while self.render_buffer[index].len() % TAB_SZ != 0 {
                     self.render_buffer[index].push(' ');
-                    while self.render_buffer[index].len() % TAB_SZ != 0 {
-                        self.render_buffer[index].push(' ');
-                    }
-                } else {
-                    self.render_buffer[index].push(c);
                 }
+            } else {
+                self.render_buffer[index].push(c);
             }
         }
     }
@@ -362,6 +367,10 @@ impl Editor {
                 disable_raw_mode()?;
                 exit(0);
             }
+            ":w" => {
+                self.mode = Mode::Normal;
+                self.save_buffer()
+            }
             _ => {
                 self.mode = Mode::Normal;
                 Ok(())
@@ -372,8 +381,19 @@ impl Editor {
     fn insert_char(&mut self, c: char) {
         let row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
         let col_pos = self.x_cursor_pos as usize + self.col_offset; //position in the file
-        self.render_buffer[row_pos].insert(col_pos, c);
+        let buf_index = Editor::translate_rend_index_to_buf(&self.buffer[row_pos], col_pos);
+        self.buffer[row_pos].insert(buf_index, c);
+        self.update_render_row(row_pos);
         self.x_cursor_pos += 1;
+    }
+
+    fn save_buffer(&self) -> Result<()> {
+        let mut file = File::create(&self.file_name)?;
+        for line in self.buffer.iter() {
+            file.write(line.as_bytes())?;
+            file.write("\n".as_bytes())?;
+        }
+        Ok(())
     }
 
     fn translate_rend_index_to_buf(buf_line: &str, mut r_index: usize) -> usize {
