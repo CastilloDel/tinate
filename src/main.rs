@@ -81,12 +81,19 @@ impl Editor {
 
     fn load_to_buf(&mut self, path: &str) -> io::Result<()> {
         self.file_name = path.to_owned();
-        let file = File::open(&self.file_name)?;
-        self.buffer = io::BufReader::new(file)
-            .lines()
-            .map(|line_result| line_result.map(|line| line.trim_end().to_string()))
-            .collect::<io::Result<Vec<String>>>()?;
-        self.update_render_buf();
+        match File::open(&self.file_name) {
+            Ok(file) => {
+                self.buffer = io::BufReader::new(file)
+                    .lines()
+                    .map(|line_result| line_result.map(|line| line.trim_end().to_string()))
+                    .collect::<io::Result<Vec<String>>>()?;
+                self.update_render_buf();
+            }
+            Err(err) if err.kind() == io::ErrorKind::NotFound => {
+                let _ = File::create(&self.file_name)?;
+            }
+            Err(err) => return Err(err),
+        }
         Ok(())
     }
 
@@ -165,6 +172,7 @@ impl Editor {
                 Event::Key(KeyEvent {
                     code: KeyCode::Esc, ..
                 }) => {
+                    self.move_cursor_safely(KeyCode::Char('h'))?;
                     self.mode = Mode::Normal;
                     Ok(())
                 }
@@ -195,7 +203,7 @@ impl Editor {
                 );
                 write!(&mut s, "{}\r\n", &trunc_line)?;
             } else {
-                if self.render_buffer.len() == 0 && i == n_rows / 3 {
+                if self.file_name == "" && i == n_rows / 3 {
                     Editor::add_welcome_message(&mut s, n_cols)?;
                 }
                 write!(&mut s, "~\r\n")?;
@@ -313,8 +321,12 @@ impl Editor {
     fn recalculate_cursor_pos(&mut self) {
         let mut row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
         if row_pos >= self.render_buffer.len() {
-            self.y_cursor_pos = (self.render_buffer.len() - 1 - self.row_offset) as u16;
+            self.y_cursor_pos = (max(self.render_buffer.len() - self.row_offset, 1) - 1) as u16;
             row_pos = self.y_cursor_pos as usize + self.row_offset;
+            if row_pos == 0 {
+                self.x_cursor_pos = 0;
+                return;
+            }
         }
 
         if self.x_cursor_pos as usize + self.col_offset >= self.render_buffer[row_pos].len() {
@@ -328,7 +340,7 @@ impl Editor {
 
     fn avoid_tabs(&mut self, key: KeyCode) -> Result<()> {
         let row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
-        if self.buffer[row_pos].is_empty() {
+        if self.buffer.is_empty() || self.buffer[row_pos].is_empty() {
             return Ok(());
         }
         let mut col_pos = self.x_cursor_pos as usize + self.col_offset; //position in the file
@@ -381,6 +393,10 @@ impl Editor {
     fn insert_char(&mut self, c: char) {
         let row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
         let col_pos = self.x_cursor_pos as usize + self.col_offset; //position in the file
+        if row_pos == self.buffer.len() {
+            self.buffer.push(String::new());
+            self.render_buffer.push(String::new());
+        }
         let buf_index = Editor::translate_rend_index_to_buf(&self.buffer[row_pos], col_pos);
         self.buffer[row_pos].insert(buf_index, c);
         self.update_render_row(row_pos);
