@@ -142,6 +142,17 @@ impl Editor {
                     self.mode = Mode::Insert;
                     Ok(())
                 }
+                Event::Key(KeyEvent {
+                    code: KeyCode::Char('a'),
+                    ..
+                }) => {
+                    let row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
+                    if row_pos < self.buffer.len() {
+                        self.x_cursor_pos += 1;
+                    }
+                    self.mode = Mode::Insert;
+                    Ok(())
+                }
                 _ => Ok(()),
             },
             Mode::Command => match event {
