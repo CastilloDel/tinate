@@ -392,6 +392,13 @@ impl Editor {
                 self.mode = Mode::Normal;
                 self.save_buffer()
             }
+            ":wq" => {
+                self.save_buffer()?;
+                execute!(io::stdout(), LeaveAlternateScreen)?;
+                //exit won't call destructors
+                disable_raw_mode()?;
+                exit(0);
+            }
             _ => {
                 self.mode = Mode::Normal;
                 Ok(())
