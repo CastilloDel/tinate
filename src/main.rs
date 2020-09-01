@@ -89,9 +89,7 @@ impl Editor {
                     .collect::<io::Result<Vec<String>>>()?;
                 self.update_render_buf();
             }
-            Err(err) if err.kind() == io::ErrorKind::NotFound => {
-                let _ = File::create(&self.file_name)?;
-            }
+            Err(err) if err.kind() == io::ErrorKind::NotFound => {}
             Err(err) => return Err(err),
         }
         Ok(())
