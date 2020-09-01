@@ -144,7 +144,7 @@ impl Editor {
                     code: KeyCode::Char('a'),
                     ..
                 }) => {
-                    let row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
+                    let row_pos = self.get_row_pos();
                     if row_pos < self.buffer.len() {
                         self.x_cursor_pos += 1;
                     }
@@ -266,7 +266,7 @@ impl Editor {
             write!(bar, "{} mode ", self.mode)?;
             write!(bar, "{}", self.file_name)?;
         }
-        let row = self.row_offset + self.y_cursor_pos as usize + 1;
+        let row = self.get_row_pos() + 1; //The stored pos is 0-indexed
         let row = String::from(" ") + &row.to_string();
         bar.truncate(n_cols - min(row.len(), n_cols));
         while n_cols - bar.len() > row.len() {
@@ -328,7 +328,7 @@ impl Editor {
     }
 
     fn recalculate_cursor_pos(&mut self) {
-        let mut row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
+        let mut row_pos = self.get_row_pos();
         if row_pos >= self.render_buffer.len() {
             self.y_cursor_pos = (max(self.render_buffer.len() - self.row_offset, 1) - 1) as u16;
             row_pos = self.y_cursor_pos as usize + self.row_offset;
@@ -348,11 +348,11 @@ impl Editor {
     }
 
     fn avoid_tabs(&mut self, key: KeyCode) -> Result<()> {
-        let row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
+        let row_pos = self.get_row_pos();
         if self.buffer.is_empty() || self.buffer[row_pos].is_empty() {
             return Ok(());
         }
-        let mut col_pos = self.x_cursor_pos as usize + self.col_offset; //position in the file
+        let mut col_pos = self.get_col_pos();
         let buf_index = Editor::translate_rend_index_to_buf(&self.buffer[row_pos], col_pos);
         if self.buffer[row_pos].chars().skip(buf_index).next() == Some('\t') {
             match key {
@@ -364,7 +364,7 @@ impl Editor {
                         != buf_index + 1
                     {
                         self.move_cursor(KeyCode::Char('l'))?;
-                        col_pos = self.x_cursor_pos as usize + self.col_offset; //position in the file
+                        col_pos = self.get_col_pos();
                     }
                 }
                 _ => {
@@ -407,8 +407,8 @@ impl Editor {
     }
 
     fn insert_char(&mut self, c: char) {
-        let row_pos = self.y_cursor_pos as usize + self.row_offset; //position in the file
-        let col_pos = self.x_cursor_pos as usize + self.col_offset; //position in the file
+        let row_pos = self.get_row_pos();
+        let col_pos = self.get_col_pos();
         if row_pos == self.buffer.len() {
             self.buffer.push(String::new());
             self.render_buffer.push(String::new());
@@ -486,6 +486,14 @@ impl Editor {
             || key.code == KeyCode::Char('j')
             || key.code == KeyCode::Char('k')
             || key.code == KeyCode::Char('l')
+    }
+
+    const fn get_row_pos(&self) -> usize {
+        self.y_cursor_pos as usize + self.row_offset
+    }
+
+    const fn get_col_pos(&self) -> usize {
+        self.x_cursor_pos as usize + self.col_offset
     }
 }
 
