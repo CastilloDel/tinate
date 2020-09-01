@@ -45,7 +45,7 @@ struct Editor {
 impl Drop for Editor {
     fn drop(&mut self) {
         //The result isn't managed because it could cause a panic during a panic
-        execute!(io::stdout(), EnterAlternateScreen).ok();
+        execute!(io::stdout(), LeaveAlternateScreen).ok();
         disable_raw_mode().ok();
     }
 }
