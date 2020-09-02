@@ -192,6 +192,13 @@ impl Editor {
                     self.mode = Mode::Normal;
                     Ok(())
                 }
+                Event::Key(KeyEvent {
+                    code: KeyCode::Enter,
+                    ..
+                }) => {
+                    self.insert_new_line();
+                    Ok(())
+                }
                 _ => Ok(()),
             },
         }
@@ -427,6 +434,24 @@ impl Editor {
         if c == '\t' {
             self.x_cursor_pos += (TAB_SZ - 1 - (col_pos % TAB_SZ)) as u16;
         }
+    }
+
+    fn insert_new_line(&mut self) {
+        let col_pos = self.get_col_pos();
+        let row_pos = self.get_row_pos();
+        let buf_index = Editor::translate_rend_index_to_buf(&self.buffer[row_pos], col_pos);
+        self.buffer.insert(
+            row_pos + 1,
+            self.buffer[row_pos].chars().skip(buf_index).collect(),
+        );
+        self.buffer[row_pos].truncate(buf_index);
+        self.render_buffer.insert(
+            row_pos + 1,
+            self.render_buffer[row_pos].chars().skip(col_pos).collect(),
+        );
+        self.render_buffer[row_pos].truncate(col_pos);
+        self.x_cursor_pos = 0;
+        self.y_cursor_pos += 1;
     }
 
     fn save_buffer(&self) -> Result<()> {
