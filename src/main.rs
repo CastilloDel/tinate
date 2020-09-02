@@ -144,8 +144,9 @@ impl Editor {
                     code: KeyCode::Char('a'),
                     ..
                 }) => {
-                    let row_pos = self.get_row_pos();
-                    if row_pos < self.buffer.len() {
+                    if self.get_row_pos() < self.buffer.len()
+                        && self.get_col_pos() < self.render_buffer[self.get_row_pos()].len()
+                    {
                         self.x_cursor_pos += 1;
                     }
                     self.mode = Mode::Insert;
@@ -176,6 +177,12 @@ impl Editor {
                     ..
                 }) => {
                     self.insert_char(c);
+                    Ok(())
+                }
+                Event::Key(KeyEvent {
+                    code: KeyCode::Tab, ..
+                }) => {
+                    self.insert_char('\t');
                     Ok(())
                 }
                 Event::Key(KeyEvent {
@@ -417,6 +424,9 @@ impl Editor {
         self.buffer[row_pos].insert(buf_index, c);
         self.update_render_row(row_pos);
         self.x_cursor_pos += 1;
+        if c == '\t' {
+            self.x_cursor_pos += (TAB_SZ - 1 - (col_pos % TAB_SZ)) as u16;
+        }
     }
 
     fn save_buffer(&self) -> Result<()> {
