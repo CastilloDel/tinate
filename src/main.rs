@@ -186,6 +186,10 @@ impl Editor {
                     code: KeyCode::Enter,
                     ..
                 }) => self.insert_new_line(),
+                Event::Key(KeyEvent {
+                    code: KeyCode::Backspace,
+                    ..
+                }) => self.delete_back(),
                 _ => Ok(()),
             },
         }
@@ -447,6 +451,42 @@ impl Editor {
         self.x_cursor_pos = 0;
         self.col_offset = 0;
         self.move_cursor(KeyCode::Char('j'))
+    }
+
+    fn delete_back(&mut self) -> Result<()> {
+        let col_pos = self.get_col_pos();
+        let row_pos = self.get_row_pos();
+        if col_pos != 0 {
+            self.move_cursor(KeyCode::Char('h'))?;
+            self.delete();
+        } else if row_pos != 0 {
+            self.move_cursor(KeyCode::Char('k'))?;
+            let (n_cols, _) = term_size()?;
+            let line_len = self.render_buffer[row_pos - 1].len();
+            if line_len > n_cols as usize + self.col_offset {
+                while self.get_row_pos() != line_len {
+                    self.move_cursor(KeyCode::Char('l'))?;
+                }
+            } else if line_len < self.col_offset {
+                while self.get_row_pos() != line_len {
+                    self.move_cursor(KeyCode::Char('h'))?;
+                }
+            } else {
+                self.x_cursor_pos = (line_len - self.col_offset) as u16;
+            }
+            let remaining_line = self.buffer.remove(row_pos);
+            self.buffer[row_pos - 1].push_str(&remaining_line);
+            self.render_buffer.remove(row_pos);
+            self.update_render_row(row_pos - 1);
+        }
+        Ok(())
+    }
+
+    fn delete(&mut self) {
+        let row_pos = self.get_row_pos();
+        let col_pos = self.get_col_pos();
+        self.buffer[row_pos].remove(col_pos);
+        self.update_render_row(self.get_row_pos());
     }
 
     fn save_buffer(&self) -> Result<()> {
