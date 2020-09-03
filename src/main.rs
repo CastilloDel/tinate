@@ -439,11 +439,11 @@ impl Editor {
             self.buffer[row_pos].chars().skip(buf_index).collect(),
         );
         self.buffer[row_pos].truncate(buf_index);
-        self.render_buffer.insert(
-            row_pos + 1,
-            self.render_buffer[row_pos].chars().skip(col_pos).collect(),
-        );
-        self.render_buffer[row_pos].truncate(col_pos);
+        self.update_render_row(row_pos);
+        if self.render_buffer.len() == row_pos + 1 {
+            self.render_buffer.push(String::new());
+        }
+        self.update_render_row(row_pos + 1);
         self.x_cursor_pos = 0;
         self.col_offset = 0;
         self.move_cursor(KeyCode::Char('j'))
