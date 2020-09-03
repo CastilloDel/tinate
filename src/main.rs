@@ -165,40 +165,27 @@ impl Editor {
                 Event::Key(KeyEvent {
                     code: KeyCode::Enter,
                     ..
-                }) => {
-                    self.execute_command()?;
-                    Ok(())
-                }
+                }) => self.execute_command(),
                 _ => Ok(()),
             },
             Mode::Insert => match event {
                 Event::Key(KeyEvent {
                     code: KeyCode::Char(c),
                     ..
-                }) => {
-                    self.insert_char(c);
-                    Ok(())
-                }
+                }) => self.insert_char(c),
                 Event::Key(KeyEvent {
                     code: KeyCode::Tab, ..
-                }) => {
-                    self.insert_char('\t');
-                    Ok(())
-                }
+                }) => self.insert_char('\t'),
                 Event::Key(KeyEvent {
                     code: KeyCode::Esc, ..
                 }) => {
-                    self.move_cursor_safely(KeyCode::Char('h'))?;
                     self.mode = Mode::Normal;
-                    Ok(())
+                    self.move_cursor_safely(KeyCode::Char('h'))
                 }
                 Event::Key(KeyEvent {
                     code: KeyCode::Enter,
                     ..
-                }) => {
-                    self.insert_new_line();
-                    Ok(())
-                }
+                }) => self.insert_new_line(),
                 _ => Ok(()),
             },
         }
@@ -229,7 +216,11 @@ impl Editor {
                 if self.file_name == "" && i == n_rows / 3 {
                     Editor::add_welcome_message(&mut s, n_cols)?;
                 }
-                write!(&mut s, "~\r\n")?;
+                if self.col_offset == 0 {
+                    write!(&mut s, "~\r\n")?;
+                } else {
+                    write!(&mut s, "\r\n")?;
+                }
             }
         }
         self.draw_status_bar(&mut s, n_cols)?;
@@ -420,7 +411,7 @@ impl Editor {
         }
     }
 
-    fn insert_char(&mut self, c: char) {
+    fn insert_char(&mut self, c: char) -> Result<()> {
         let row_pos = self.get_row_pos();
         let col_pos = self.get_col_pos();
         if row_pos == self.buffer.len() {
@@ -430,13 +421,16 @@ impl Editor {
         let buf_index = Editor::translate_rend_index_to_buf(&self.buffer[row_pos], col_pos);
         self.buffer[row_pos].insert(buf_index, c);
         self.update_render_row(row_pos);
-        self.x_cursor_pos += 1;
+        self.move_cursor(KeyCode::Char('l'))?;
         if c == '\t' {
-            self.x_cursor_pos += (TAB_SZ - 1 - (col_pos % TAB_SZ)) as u16;
+            for _ in 0..TAB_SZ - 1 - (col_pos % TAB_SZ) {
+                self.move_cursor(KeyCode::Char('l'))?;
+            }
         }
+        Ok(())
     }
 
-    fn insert_new_line(&mut self) {
+    fn insert_new_line(&mut self) -> Result<()> {
         let col_pos = self.get_col_pos();
         let row_pos = self.get_row_pos();
         let buf_index = Editor::translate_rend_index_to_buf(&self.buffer[row_pos], col_pos);
@@ -451,7 +445,8 @@ impl Editor {
         );
         self.render_buffer[row_pos].truncate(col_pos);
         self.x_cursor_pos = 0;
-        self.y_cursor_pos += 1;
+        self.col_offset = 0;
+        self.move_cursor(KeyCode::Char('j'))
     }
 
     fn save_buffer(&self) -> Result<()> {
