@@ -19,9 +19,10 @@ use std::io::prelude::*;
 use std::process::exit;
 mod modes;
 use modes::Mode;
+mod line;
+use line::TAB_SZ;
 
 const WELCOME_MESSAGE: &'static str = "Tinate Is Not A Text Editor";
-const TAB_SZ: usize = 4;
 
 fn main() -> Result<()> {
     execute!(io::stdout(), EnterAlternateScreen)?;
