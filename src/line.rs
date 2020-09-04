@@ -7,6 +7,9 @@ pub struct Line {
 
 impl Line {
     pub fn new(s: &str) -> Self {
+        if s.contains('\n') {
+            panic!("A Line can't contain a new line character('\n')")
+        }
         let mut line = Line {
             content: s.to_owned(),
             display: String::new(),
