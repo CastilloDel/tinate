@@ -21,6 +21,10 @@ impl Line {
         line
     }
 
+    pub fn len(&self) -> usize {
+        self.display.width()
+    }
+
     fn update_display(&mut self) {
         self.display.clear();
         for s in self.content.graphemes(true) {
@@ -48,5 +52,11 @@ mod tests {
     fn new_line_not_ascii() {
         let line = super::Line::new("\táa\të");
         assert_eq!(line.display, "    áa  ë");
+    }
+
+    #[test]
+    fn correct_len() {
+        let line = super::Line::new("\táñ\të");
+        assert_eq!(line.len(), 9)
     }
 }
