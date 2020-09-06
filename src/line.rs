@@ -44,6 +44,23 @@ impl Line {
         self.content.is_empty()
     }
 
+    pub fn is_valid_index(&self, index: usize) -> bool {
+        let mut i = 0;
+        let mut iter = self.content.graphemes(true);
+        while i < index {
+            match iter.next() {
+                None => return false,
+                Some("\t") => i += TAB_SZ - (i % TAB_SZ),
+                Some(_) => i += 1,
+            }
+        }
+        if i == index {
+            true
+        } else {
+            false
+        }
+    }
+
     fn update_display(&mut self) {
         self.display.clear();
         let mut width = 0;
@@ -104,5 +121,17 @@ mod tests {
     fn truncate_beyond_end() {
         let line = super::Line::new("\táñ\të");
         assert_eq!(line.truncate(10, 13), "")
+    }
+
+    #[test]
+    fn valid_index() {
+        let line = super::Line::new("\táñ\të");
+        assert_eq!(line.is_valid_index(8), true);
+    }
+
+    #[test]
+    fn invalid_index() {
+        let line = super::Line::new("\táñ\të");
+        assert_eq!(line.is_valid_index(7), false);
     }
 }
