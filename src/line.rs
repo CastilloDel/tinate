@@ -40,6 +40,10 @@ impl Line {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.content.is_empty()
+    }
+
     fn update_display(&mut self) {
         self.display.clear();
         let mut width = 0;
