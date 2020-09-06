@@ -61,6 +61,41 @@ impl Line {
         }
     }
 
+    pub fn next_valid_index(&self, index: usize) -> Option<usize> {
+        let mut i = 0;
+        let mut iter = self.content.graphemes(true);
+        while i <= index {
+            match iter.next() {
+                None => return None,
+                Some("\t") => i += TAB_SZ - (i % TAB_SZ),
+                Some(_) => i += 1,
+            }
+        }
+        if let None = iter.next() {
+            None
+        } else {
+            Some(i)
+        }
+    }
+
+    pub fn prev_valid_index(&self, index: usize) -> Option<usize> {
+        if index == 0 {
+            return None;
+        }
+        let mut i = 0;
+        let mut prev_i = 0;
+        let mut iter = self.content.graphemes(true);
+        while i < index {
+            prev_i = i;
+            match iter.next() {
+                None => return None,
+                Some("\t") => i += TAB_SZ - (i % TAB_SZ),
+                Some(_) => i += 1,
+            }
+        }
+        Some(prev_i)
+    }
+
     fn update_display(&mut self) {
         self.display.clear();
         let mut width = 0;
@@ -133,5 +168,29 @@ mod tests {
     fn invalid_index() {
         let line = super::Line::new("\táñ\të");
         assert_eq!(line.is_valid_index(7), false);
+    }
+
+    #[test]
+    fn next_index() {
+        let line = super::Line::new("\táñ\të");
+        assert_eq!(line.next_valid_index(2), Some(4));
+    }
+
+    #[test]
+    fn no_next_index() {
+        let line = super::Line::new("\táñ\të");
+        assert_eq!(line.next_valid_index(8), None);
+    }
+
+    #[test]
+    fn prev_index() {
+        let line = super::Line::new("\táñ\të");
+        assert_eq!(line.prev_valid_index(8), Some(6));
+    }
+
+    #[test]
+    fn no_prev_index() {
+        let line = super::Line::new("\táñ\të");
+        assert_eq!(line.prev_valid_index(0), None);
     }
 }
