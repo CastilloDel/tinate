@@ -24,6 +24,22 @@ impl Line {
         self.display.graphemes(true).count()
     }
 
+    pub fn truncate(&self, start: usize, max_len: usize) -> String {
+        let start_index = match self.display.grapheme_indices(true).skip(start).next() {
+            None => return String::from(""),
+            Some((index, _)) => index,
+        };
+        match self
+            .display
+            .grapheme_indices(true)
+            .skip(start + max_len)
+            .next()
+        {
+            None => self.display[start_index..].to_owned(),
+            Some((end_index, _)) => self.display[start_index..end_index].to_owned(),
+        }
+    }
+
     fn update_display(&mut self) {
         self.display.clear();
         let mut width = 0;
@@ -60,5 +76,29 @@ mod tests {
     fn correct_len() {
         let line = super::Line::new("\táñ\të");
         assert_eq!(line.len(), 9)
+    }
+
+    #[test]
+    fn truncate_start() {
+        let line = super::Line::new("\táñ\të");
+        assert_eq!(line.truncate(3, 20), " áñ  ë")
+    }
+
+    #[test]
+    fn truncate_end() {
+        let line = super::Line::new("\táñ\të");
+        assert_eq!(line.truncate(0, 6), "    áñ")
+    }
+
+    #[test]
+    fn truncate_end_and_start() {
+        let line = super::Line::new("\táñ\të");
+        assert_eq!(line.truncate(2, 6), "  áñ  ")
+    }
+
+    #[test]
+    fn truncate_beyond_end() {
+        let line = super::Line::new("\táñ\të");
+        assert_eq!(line.truncate(10, 13), "")
     }
 }
