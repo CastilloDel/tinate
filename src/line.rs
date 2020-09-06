@@ -1,7 +1,6 @@
 pub const TAB_SZ: usize = 4;
 
 use unicode_segmentation::UnicodeSegmentation;
-use unicode_width::UnicodeWidthStr;
 
 pub struct Line {
     content: String,
@@ -22,16 +21,19 @@ impl Line {
     }
 
     pub fn len(&self) -> usize {
-        self.display.width()
+        self.display.graphemes(true).count()
     }
 
     fn update_display(&mut self) {
         self.display.clear();
+        let mut width = 0;
         for s in self.content.graphemes(true) {
+            width += 1;
             if s == "\t" {
                 self.display.push(' ');
-                while self.display.width() % TAB_SZ != 0 {
+                while width % TAB_SZ != 0 {
                     self.display.push(' ');
+                    width += 1;
                 }
             } else {
                 self.display.push_str(s);
