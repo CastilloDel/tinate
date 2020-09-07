@@ -96,6 +96,32 @@ impl Line {
         Some(prev_i)
     }
 
+    pub fn insert(&mut self, index: usize, s: &str) {
+        let mut i = 0;
+        let mut iter = self.content.grapheme_indices(true);
+        while i < index {
+            match iter.next() {
+                None => panic!("Line: Tried to insert in a invalid index({})", index),
+                Some((_, grapheme)) => {
+                    if grapheme == "\t" {
+                        i += TAB_SZ - (i % TAB_SZ);
+                    } else {
+                        i += 1;
+                    }
+                }
+            }
+        }
+        if i != index {
+            panic!("Line: Tried to insert in a invalid index({})", index);
+        }
+        if let Some((content_index, _)) = iter.next() {
+            self.content.insert_str(content_index, s);
+        } else {
+            self.content.insert_str(self.content.len(), s);
+        }
+        self.update_display();
+    }
+
     fn update_display(&mut self) {
         self.display.clear();
         let mut width = 0;
@@ -192,5 +218,27 @@ mod tests {
     fn no_prev_index() {
         let line = super::Line::new("\táñ\të");
         assert_eq!(line.prev_valid_index(0), None);
+    }
+
+    #[test]
+    fn insert_char() {
+        let mut line = super::Line::new("\táñ\të");
+        line.insert(5, "ö");
+        assert_eq!(line.content, "\táöñ\të");
+    }
+
+    #[test]
+    fn insert_char_one_beyond_len() {
+        let mut line = super::Line::new("\táñ\të");
+        line.insert(9, "ö");
+        assert_eq!(line.content, "\táñ\tëö");
+    }
+
+    #[test]
+    #[should_panic]
+    fn insert_char_beyond_len() {
+        let mut line = super::Line::new("\táñ\të");
+        line.insert(10, "ö");
+        assert_eq!(line.content, "\táñ\tëö");
     }
 }
