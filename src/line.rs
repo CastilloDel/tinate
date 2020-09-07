@@ -24,7 +24,7 @@ impl Line {
         self.display.graphemes(true).count()
     }
 
-    pub fn truncate(&self, start: usize, max_len: usize) -> String {
+    pub fn take_substr(&self, start: usize, max_len: usize) -> String {
         let start_index = match self.display.grapheme_indices(true).skip(start).next() {
             None => return String::from(""),
             Some((index, _)) => index,
@@ -161,27 +161,27 @@ mod tests {
     }
 
     #[test]
-    fn truncate_start() {
+    fn take_substr_start() {
         let line = super::Line::new("\táñ\të");
-        assert_eq!(line.truncate(3, 20), " áñ  ë")
+        assert_eq!(line.take_substr(3, 20), " áñ  ë")
     }
 
     #[test]
-    fn truncate_end() {
+    fn take_substr_end() {
         let line = super::Line::new("\táñ\të");
-        assert_eq!(line.truncate(0, 6), "    áñ")
+        assert_eq!(line.take_substr(0, 6), "    áñ")
     }
 
     #[test]
-    fn truncate_end_and_start() {
+    fn take_substr_end_and_start() {
         let line = super::Line::new("\táñ\të");
-        assert_eq!(line.truncate(2, 6), "  áñ  ")
+        assert_eq!(line.take_substr(2, 6), "  áñ  ")
     }
 
     #[test]
-    fn truncate_beyond_end() {
+    fn take_substr_beyond_end() {
         let line = super::Line::new("\táñ\të");
-        assert_eq!(line.truncate(10, 13), "")
+        assert_eq!(line.take_substr(10, 13), "")
     }
 
     #[test]
