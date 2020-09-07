@@ -45,6 +45,9 @@ impl Line {
     }
 
     pub fn is_valid_index(&self, index: usize) -> bool {
+        if index >= self.len() {
+            return false;
+        }
         let mut i = 0;
         let mut iter = self.content.graphemes(true);
         while i < index {
@@ -194,6 +197,12 @@ mod tests {
     fn invalid_index() {
         let line = super::Line::new("\táñ\të");
         assert_eq!(line.is_valid_index(7), false);
+    }
+
+    #[test]
+    fn invalid_index_beyond_len() {
+        let line = super::Line::new("\táñ\të");
+        assert_eq!(line.is_valid_index(9), false);
     }
 
     #[test]
