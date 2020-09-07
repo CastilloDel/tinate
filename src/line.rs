@@ -24,6 +24,10 @@ impl Line {
         self.display.graphemes(true).count()
     }
 
+    pub fn get_content(&self) -> String {
+        self.content.clone()
+    }
+
     pub fn take_substr(&self, start: usize, max_len: usize) -> String {
         let start_index = match self.display.grapheme_indices(true).skip(start).next() {
             None => return String::from(""),
