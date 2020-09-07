@@ -125,6 +125,41 @@ impl Line {
         self.update_display();
     }
 
+    pub fn split_off(&mut self, at: usize) -> Line {
+        if at == self.len() {
+            return Line::new("");
+        }
+        assert!(self.is_valid_index(at));
+        let other = self.content.split_off(self.get_content_index(at));
+        self.update_display();
+        Line::new(&other)
+    }
+
+    fn get_content_index(&self, index: usize) -> usize {
+        let mut i = 0;
+        let mut iter = self.content.grapheme_indices(true);
+        while i < index {
+            match iter.next() {
+                None => panic!("Line: Tried to translate an invalid index({})", index),
+                Some((_, grapheme)) => {
+                    if grapheme == "\t" {
+                        i += TAB_SZ - (i % TAB_SZ);
+                    } else {
+                        i += 1;
+                    }
+                }
+            }
+        }
+        if i != index {
+            panic!("Line: Tried to translate an invalid index({})", index);
+        }
+        if let Some((content_index, _)) = iter.next() {
+            content_index
+        } else {
+            panic!("Line: Tried to translate an invalid index({})", index);
+        }
+    }
+
     fn update_display(&mut self) {
         self.display.clear();
         let mut width = 0;
@@ -248,5 +283,42 @@ mod tests {
     fn insert_char_beyond_len() {
         let mut line = super::Line::new("\táñ\të");
         line.insert(10, "ö");
+    }
+
+    #[test]
+    fn split_off_half() {
+        let mut line = super::Line::new("\táñ\të");
+        assert_eq!(line.split_off(5).content, "ñ\të");
+    }
+
+    #[test]
+    fn split_off_start() {
+        let mut line = super::Line::new("\táñ\të");
+        assert_eq!(line.split_off(0).content, "\táñ\të");
+    }
+
+    #[test]
+    fn split_off_end() {
+        let mut line = super::Line::new("\táñ\të");
+        assert_eq!(line.split_off(9).content, "");
+    }
+
+    #[test]
+    fn content_index() {
+        let line = super::Line::new("\táñ\të");
+        assert_eq!(line.get_content_index(5), 3);
+    }
+
+    #[test]
+    fn content_index_zero() {
+        let line = super::Line::new("\táñ\të");
+        assert_eq!(line.get_content_index(0), 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn content_index_beyond_len() {
+        let line = super::Line::new("\táñ\të");
+        line.get_content_index(9);
     }
 }
