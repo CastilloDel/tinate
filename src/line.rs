@@ -1,5 +1,6 @@
 pub const TAB_SZ: usize = 4;
 
+use unicode_segmentation::GraphemeCursor;
 use unicode_segmentation::UnicodeSegmentation;
 
 pub struct Line {
@@ -141,6 +142,19 @@ impl Line {
         let other = self.content.split_off(self.get_content_index(at));
         self.update_display();
         Line::new(&other)
+    }
+
+    pub fn remove(&mut self, index: usize) {
+        assert!(self.is_valid_index(index));
+        let start = self.get_content_index(index);
+        let end;
+        match GraphemeCursor::new(start, self.content.len(), true).next_boundary(&self.content, 0) {
+            Ok(Some(i)) => end = i,
+            Ok(None) => end = self.content.len(),
+            _ => unreachable!(),
+        }
+        self.content.replace_range(dbg!(start..end), "");
+        self.update_display();
     }
 
     fn get_content_index(&self, index: usize) -> usize {
@@ -316,6 +330,27 @@ mod tests {
     fn split_off_end() {
         let mut line = super::Line::new("\táñ\të");
         assert_eq!(line.split_off(9).content, "");
+    }
+
+    #[test]
+    fn remove() {
+        let mut line = super::Line::new("\táñ\të");
+        line.remove(5);
+        assert_eq!(line.content, "\tá\të");
+    }
+
+    #[test]
+    fn remove_start() {
+        let mut line = super::Line::new("\táñ\të");
+        line.remove(0);
+        assert_eq!(line.content, "áñ\të");
+    }
+
+    #[test]
+    #[should_panic]
+    fn remove_beyond_len() {
+        let mut line = super::Line::new("\táñ\të");
+        line.remove(9);
     }
 
     #[test]
