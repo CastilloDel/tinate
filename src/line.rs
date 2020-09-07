@@ -125,6 +125,10 @@ impl Line {
         self.update_display();
     }
 
+    pub fn push(&mut self, s: &str) {
+        self.insert(self.len(), s);
+    }
+
     pub fn split_off(&mut self, at: usize) -> Line {
         if at == self.len() {
             return Line::new("");
@@ -283,6 +287,13 @@ mod tests {
     fn insert_char_beyond_len() {
         let mut line = super::Line::new("\táñ\të");
         line.insert(10, "ö");
+    }
+
+    #[test]
+    fn push() {
+        let mut line = super::Line::new("\táñ\të");
+        line.push("äñ");
+        assert_eq!(line.content, "\táñ\tëäñ");
     }
 
     #[test]
