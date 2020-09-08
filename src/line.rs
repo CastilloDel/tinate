@@ -157,6 +157,8 @@ impl Line {
         self.update_display();
     }
 
+    //Gets the equivalent index in the contente to an index in the rendered part graphemes
+    //Worth notice that graphemes like á take up two bytes
     fn get_content_index(&self, index: usize) -> usize {
         let mut i = 0;
         let mut iter = self.content.grapheme_indices(true);
