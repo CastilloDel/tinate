@@ -10,9 +10,10 @@ pub struct Line {
 
 impl Line {
     pub fn new(s: &str) -> Self {
-        if s.contains('\n') {
-            panic!("A Line can't contain a new line character('\n')")
-        }
+        assert!(
+            !s.contains('\n'),
+            "A Line can't contain a new line character('\n')"
+        );
         let mut line = Line {
             content: s.to_owned(),
             display: String::new(),
@@ -105,6 +106,10 @@ impl Line {
     }
 
     pub fn insert(&mut self, index: usize, s: &str) {
+        assert!(
+            !s.contains('\n'),
+            "A Line can't contain a new line character('\n')"
+        );
         let mut i = 0;
         let mut iter = self.content.grapheme_indices(true);
         while i < index {
