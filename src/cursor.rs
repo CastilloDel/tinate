@@ -1,6 +1,6 @@
 use super::Editor;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Cursor {
     pub x: usize,
     pub y: usize,
@@ -56,6 +56,18 @@ impl Editor {
             (x, y)
         }
     }
+
+    fn move_cursor_right(&mut self, n: usize) {
+        for _ in 0..n {
+            match self.buffer[self.y()].next_valid_index(self.x()) {
+                Some(n) => self.cursor.x = n,
+                None => {
+                    self.cursor.x += 1;
+                    return;
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -67,5 +79,29 @@ mod tests {
         let mut editor = Editor::new();
         editor.buffer.push(Line::new("átaro"));
         assert_eq!(editor.bound((7, 1), true), (4, 0));
+    }
+
+    #[test]
+    fn move_right() {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("átaro"));
+        editor.move_cursor_right(4);
+        assert_eq!(editor.cursor, Cursor { x: 4, y: 0 });
+    }
+
+    #[test]
+    fn move_right_tabs() {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("á\ttaro"));
+        editor.move_cursor_right(4);
+        assert_eq!(editor.cursor, Cursor { x: 6, y: 0 });
+    }
+
+    #[test]
+    fn move_right_beyond_end() {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("á\ttaro"));
+        editor.move_cursor_right(10);
+        assert_eq!(editor.cursor, Cursor { x: 8, y: 0 });
     }
 }
