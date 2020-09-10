@@ -63,11 +63,9 @@ mod tests {
     use super::super::*;
 
     #[test]
-    fn bound_test() -> Result<()> {
-        execute!(io::stdout(), EnterAlternateScreen)?;
+    fn bound_test() {
         let mut editor = Editor::new();
         editor.buffer.push(Line::new("átaro"));
         assert_eq!(editor.bound((7, 1), true), (4, 0));
-        Ok(())
     }
 }
