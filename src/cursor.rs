@@ -13,20 +13,20 @@ impl Cursor {
 }
 
 impl Editor {
-    pub fn pos(&self) -> (usize, usize) {
+    fn pos(&self) -> (usize, usize) {
         let cursor = self.cursor;
         self.bound((cursor.x, cursor.y), true)
     }
 
-    pub fn x(&self) -> usize {
+    fn x(&self) -> usize {
         self.pos().0
     }
 
-    pub fn y(&self) -> usize {
+    fn y(&self) -> usize {
         self.pos().1
     }
 
-    pub fn bound(&self, (x, mut y): (usize, usize), tight: bool) -> (usize, usize) {
+    fn bound(&self, (x, mut y): (usize, usize), tight: bool) -> (usize, usize) {
         y = if y >= self.buffer.len() {
             self.buffer.len() - 1
         } else {
@@ -45,11 +45,11 @@ impl Editor {
         }
     }
 
-    pub fn bound_x(&self, (x, y): (usize, usize), tight: bool) -> (usize, usize) {
+    fn bound_x(&self, (x, y): (usize, usize), tight: bool) -> (usize, usize) {
         (self.bound((x, y), tight).0, y)
     }
 
-    pub fn bound_y(&self, (x, y): (usize, usize)) -> (usize, usize) {
+    fn bound_y(&self, (x, y): (usize, usize)) -> (usize, usize) {
         if y > self.buffer.len() - 1 {
             (x, self.buffer.len() - 1)
         } else {
