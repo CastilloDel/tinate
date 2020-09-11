@@ -89,6 +89,17 @@ impl Editor {
         self.assert_valid_pos();
     }
 
+    fn move_cursor_down(&mut self, n: usize) {
+        for _ in 0..n {
+            if self.y() == self.buffer.len() - 1 {
+                return;
+            } else {
+                self.cursor.y = self.y() + 1
+            };
+        }
+        self.assert_valid_pos();
+    }
+
     fn assert_valid_pos(&mut self) {
         if !self.buffer[self.y()].is_valid_index(self.x()) {
             self.cursor.x = self.buffer[self.y()]
@@ -170,5 +181,24 @@ mod tests {
         editor.cursor.y = 1;
         editor.move_cursor_up(10);
         assert_eq!(editor.cursor.y, 0);
+    }
+
+    #[test]
+    fn move_down() {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("áñëü\t"));
+        editor.buffer.push(Line::new("á\tt"));
+        editor.cursor.x = 3;
+        editor.move_cursor_down(1);
+        assert_eq!(editor.cursor, Cursor { x: 1, y: 1 });
+    }
+
+    #[test]
+    fn move_down_beyond_end() {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new(""));
+        editor.buffer.push(Line::new(""));
+        editor.move_cursor_down(10);
+        assert_eq!(editor.cursor.y, 1);
     }
 }
