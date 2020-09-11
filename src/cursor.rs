@@ -68,6 +68,15 @@ impl Editor {
             }
         }
     }
+
+    fn move_cursor_left(&mut self, n: usize) {
+        for _ in 0..n {
+            self.cursor.x = match self.buffer[self.y()].prev_valid_index(self.x()) {
+                Some(n) => n,
+                None => return,
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -103,5 +112,23 @@ mod tests {
         editor.buffer.push(Line::new("á\ttaro"));
         editor.move_cursor_right(10);
         assert_eq!(editor.cursor, Cursor { x: 8, y: 0 });
+    }
+
+    #[test]
+    fn move_left_until_start() {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("á\ttaro"));
+        editor.cursor.x = 5;
+        editor.move_cursor_left(10);
+        assert_eq!(editor.cursor, Cursor { x: 0, y: 0 });
+    }
+
+    #[test]
+    fn move_left() {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("á\ttaro"));
+        editor.cursor.x = 5;
+        editor.move_cursor_left(1);
+        assert_eq!(editor.cursor, Cursor { x: 4, y: 0 });
     }
 }
