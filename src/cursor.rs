@@ -77,6 +77,25 @@ impl Editor {
             }
         }
     }
+
+    fn move_cursor_up(&mut self, n: usize) {
+        for _ in 0..n {
+            if self.y() == 0 {
+                return;
+            } else {
+                self.cursor.y = self.y() - 1
+            };
+        }
+        self.assert_valid_pos();
+    }
+
+    fn assert_valid_pos(&mut self) {
+        if !self.buffer[self.y()].is_valid_index(self.x()) {
+            self.cursor.x = self.buffer[self.y()]
+                .prev_valid_index(self.x())
+                .unwrap_or(0);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -130,5 +149,26 @@ mod tests {
         editor.cursor.x = 5;
         editor.move_cursor_left(1);
         assert_eq!(editor.cursor, Cursor { x: 4, y: 0 });
+    }
+
+    #[test]
+    fn move_up() {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("á\t\ttaro"));
+        editor.buffer.push(Line::new("á\ttaro"));
+        editor.cursor.x = 5;
+        editor.cursor.y = 1;
+        editor.move_cursor_up(1);
+        assert_eq!(editor.cursor, Cursor { x: 4, y: 0 });
+    }
+
+    #[test]
+    fn move_up_beyond_start() {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("á\t\ttaro"));
+        editor.buffer.push(Line::new("á\ttaro"));
+        editor.cursor.y = 1;
+        editor.move_cursor_up(10);
+        assert_eq!(editor.cursor.y, 0);
     }
 }
