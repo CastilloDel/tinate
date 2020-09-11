@@ -13,17 +13,17 @@ impl Cursor {
 }
 
 impl Editor {
-    fn pos(&self) -> (usize, usize) {
+    fn pos(&self, tight: bool) -> (usize, usize) {
         let cursor = self.cursor;
-        self.bound((cursor.x, cursor.y), true)
+        self.bound((cursor.x, cursor.y), tight)
     }
 
     fn x(&self) -> usize {
-        self.pos().0
+        self.pos(true).0
     }
 
     fn y(&self) -> usize {
-        self.pos().1
+        self.pos(true).1
     }
 
     fn bound(&self, (x, mut y): (usize, usize), tight: bool) -> (usize, usize) {
@@ -106,6 +106,16 @@ impl Editor {
                 .prev_valid_index(self.x())
                 .unwrap_or(0);
         }
+    }
+
+    fn cursor_pos_to_screen_pos(&self, n_cols: u16, tight: bool) -> (u16, u16) {
+        let (cursor_x, cursor_y) = self.pos(tight);
+        let x = (cursor_x % n_cols as usize) as u16;
+        let y = self.buffer[self.y_scroll..=cursor_y]
+            .iter()
+            .fold(0, |acc, x| acc + 1 + (x.len() / n_cols as usize) as u16);
+
+        (x, y - 1)
     }
 }
 
@@ -200,5 +210,15 @@ mod tests {
         editor.buffer.push(Line::new(""));
         editor.move_cursor_down(10);
         assert_eq!(editor.cursor.y, 1);
+    }
+
+    #[test]
+    fn screen_coords() {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("ábcñ"));
+        editor.buffer.push(Line::new("yerga"));
+        editor.cursor.x = 4;
+        editor.cursor.y = 1;
+        assert_eq!(editor.cursor_pos_to_screen_pos(4, true), (0, 3));
     }
 }
