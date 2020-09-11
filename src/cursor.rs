@@ -13,16 +13,16 @@ impl Cursor {
 }
 
 impl Editor {
-    fn pos(&self, tight: bool) -> (usize, usize) {
+    pub fn pos(&self, tight: bool) -> (usize, usize) {
         let cursor = self.cursor;
         self.bound((cursor.x, cursor.y), tight)
     }
 
-    fn x(&self) -> usize {
+    pub fn x(&self) -> usize {
         self.pos(true).0
     }
 
-    fn y(&self) -> usize {
+    pub fn y(&self) -> usize {
         self.pos(true).1
     }
 
@@ -57,7 +57,7 @@ impl Editor {
         }
     }
 
-    fn move_cursor_right(&mut self, n: usize) {
+    pub fn move_cursor_right(&mut self, n: usize) {
         for _ in 0..n {
             match self.buffer[self.y()].next_valid_index(self.x()) {
                 Some(n) => self.cursor.x = n,
@@ -69,7 +69,7 @@ impl Editor {
         }
     }
 
-    fn move_cursor_left(&mut self, n: usize) {
+    pub fn move_cursor_left(&mut self, n: usize) {
         for _ in 0..n {
             self.cursor.x = match self.buffer[self.y()].prev_valid_index(self.x()) {
                 Some(n) => n,
@@ -78,7 +78,7 @@ impl Editor {
         }
     }
 
-    fn move_cursor_up(&mut self, n: usize) {
+    pub fn move_cursor_up(&mut self, n: usize) {
         for _ in 0..n {
             if self.y() == 0 {
                 return;
@@ -89,7 +89,7 @@ impl Editor {
         self.assert_valid_pos();
     }
 
-    fn move_cursor_down(&mut self, n: usize) {
+    pub fn move_cursor_down(&mut self, n: usize) {
         for _ in 0..n {
             if self.y() == self.buffer.len() - 1 {
                 return;
@@ -108,7 +108,7 @@ impl Editor {
         }
     }
 
-    fn cursor_pos_to_screen_pos(&self, n_cols: u16, tight: bool) -> (u16, u16) {
+    pub fn cursor_pos_to_screen_pos(&self, n_cols: u16, tight: bool) -> (u16, u16) {
         let (cursor_x, cursor_y) = self.pos(tight);
         let x = (cursor_x % n_cols as usize) as u16;
         let y = self.buffer[self.y_scroll..=cursor_y]
