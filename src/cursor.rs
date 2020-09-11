@@ -60,7 +60,7 @@ impl Editor {
     pub fn move_cursor_right(&mut self, n: usize) {
         for _ in 0..n {
             match self.buffer[self.y()].next_valid_index(self.x()) {
-                Some(n) => self.cursor.x = n,
+                Some(index) => self.cursor.x = index,
                 None => {
                     self.cursor.x += 1;
                     return;
@@ -72,7 +72,7 @@ impl Editor {
     pub fn move_cursor_left(&mut self, n: usize) {
         for _ in 0..n {
             self.cursor.x = match self.buffer[self.y()].prev_valid_index(self.x()) {
-                Some(n) => n,
+                Some(index) => index,
                 None => return,
             }
         }
