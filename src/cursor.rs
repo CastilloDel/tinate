@@ -1,4 +1,5 @@
 use super::Editor;
+use std::cmp::min;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Cursor {
@@ -18,8 +19,8 @@ impl Editor {
         self.bound((cursor.x, cursor.y), tight)
     }
 
-    pub fn x(&self) -> usize {
-        self.pos(true).0
+    pub fn x(&self, tight: bool) -> usize {
+        self.pos(tight).0
     }
 
     pub fn y(&self) -> usize {
@@ -27,6 +28,9 @@ impl Editor {
     }
 
     fn bound(&self, (x, mut y): (usize, usize), tight: bool) -> (usize, usize) {
+        if self.buffer.len() == 0 {
+            return (0, 0);
+        }
         y = if y >= self.buffer.len() {
             self.buffer.len() - 1
         } else {
@@ -45,24 +49,12 @@ impl Editor {
         }
     }
 
-    fn bound_x(&self, (x, y): (usize, usize), tight: bool) -> (usize, usize) {
-        (self.bound((x, y), tight).0, y)
-    }
-
-    fn bound_y(&self, (x, y): (usize, usize)) -> (usize, usize) {
-        if y > self.buffer.len() - 1 {
-            (x, self.buffer.len() - 1)
-        } else {
-            (x, y)
-        }
-    }
-
     pub fn move_cursor_right(&mut self, n: usize) {
         for _ in 0..n {
-            match self.buffer[self.y()].next_valid_index(self.x()) {
+            match self.buffer[self.y()].next_valid_index(self.x(false)) {
                 Some(index) => self.cursor.x = index,
                 None => {
-                    self.cursor.x += 1;
+                    self.cursor.x = self.buffer[self.y()].len();
                     return;
                 }
             }
@@ -71,7 +63,7 @@ impl Editor {
 
     pub fn move_cursor_left(&mut self, n: usize) {
         for _ in 0..n {
-            self.cursor.x = match self.buffer[self.y()].prev_valid_index(self.x()) {
+            self.cursor.x = match self.buffer[self.y()].prev_valid_index(self.x(false)) {
                 Some(index) => index,
                 None => return,
             }
@@ -101,9 +93,9 @@ impl Editor {
     }
 
     fn assert_valid_pos(&mut self) {
-        if !self.buffer[self.y()].is_valid_index(self.x()) {
+        if !self.buffer[self.y()].is_valid_index(self.x(true)) {
             self.cursor.x = self.buffer[self.y()]
-                .prev_valid_index(self.x())
+                .prev_valid_index(self.x(true))
                 .unwrap_or(0);
         }
     }
@@ -111,11 +103,14 @@ impl Editor {
     pub fn cursor_pos_to_screen_pos(&self, n_cols: u16, tight: bool) -> (u16, u16) {
         let (cursor_x, cursor_y) = self.pos(tight);
         let x = (cursor_x % n_cols as usize) as u16;
-        let y = self.buffer[self.y_scroll..=cursor_y]
+        let mut y = self.buffer[self.y_scroll..cursor_y]
             .iter()
-            .fold(0, |acc, x| acc + 1 + (x.len() / n_cols as usize) as u16);
+            .fold(0, |acc, line| {
+                acc + 1 + ((line.len() - min(1, line.len())) / n_cols as usize) as u16
+            });
+        y += (cursor_x / n_cols as usize) as u16;
 
-        (x, y - 1)
+        (x, y)
     }
 }
 
@@ -219,6 +214,16 @@ mod tests {
         editor.buffer.push(Line::new("yerga"));
         editor.cursor.x = 4;
         editor.cursor.y = 1;
-        assert_eq!(editor.cursor_pos_to_screen_pos(4, true), (0, 3));
+        assert_eq!(editor.cursor_pos_to_screen_pos(4, true), (0, 2));
+    }
+
+    #[test]
+    fn screen_coords_2() {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("ábcñ"));
+        editor.buffer.push(Line::new("yerga"));
+        editor.cursor.x = 3;
+        editor.cursor.y = 1;
+        assert_eq!(editor.cursor_pos_to_screen_pos(4, true), (3, 1));
     }
 }
