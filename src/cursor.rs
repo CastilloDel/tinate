@@ -49,12 +49,16 @@ impl Editor {
         }
     }
 
-    pub fn move_cursor_right(&mut self, n: usize) {
+    pub fn move_cursor_right(&mut self, n: usize, tight: bool) {
         for _ in 0..n {
             match self.buffer[self.y()].next_valid_index(self.x(false)) {
                 Some(index) => self.cursor.x = index,
                 None => {
-                    self.cursor.x = self.buffer[self.y()].len();
+                    self.cursor.x = if tight {
+                        self.buffer[self.y()].len() - min(self.buffer[self.y()].len(), 1)
+                    } else {
+                        self.buffer[self.y()].len()
+                    };
                     return;
                 }
             }
@@ -129,7 +133,7 @@ mod tests {
     fn move_right() {
         let mut editor = Editor::new();
         editor.buffer.push(Line::new("átaro"));
-        editor.move_cursor_right(4);
+        editor.move_cursor_right(4, true);
         assert_eq!(editor.cursor, Cursor { x: 4, y: 0 });
     }
 
@@ -137,7 +141,7 @@ mod tests {
     fn move_right_tabs() {
         let mut editor = Editor::new();
         editor.buffer.push(Line::new("á\ttaro"));
-        editor.move_cursor_right(4);
+        editor.move_cursor_right(4, true);
         assert_eq!(editor.cursor, Cursor { x: 6, y: 0 });
     }
 
@@ -145,7 +149,7 @@ mod tests {
     fn move_right_beyond_end() {
         let mut editor = Editor::new();
         editor.buffer.push(Line::new("á\ttaro"));
-        editor.move_cursor_right(10);
+        editor.move_cursor_right(10, false);
         assert_eq!(editor.cursor, Cursor { x: 8, y: 0 });
     }
 
