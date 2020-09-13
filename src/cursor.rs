@@ -54,10 +54,8 @@ impl Editor {
             match self.buffer[self.y()].next_valid_index(self.x(false)) {
                 Some(index) => self.cursor.x = index,
                 None => {
-                    self.cursor.x = if tight {
-                        self.buffer[self.y()].len() - min(self.buffer[self.y()].len(), 1)
-                    } else {
-                        self.buffer[self.y()].len()
+                    if !tight {
+                        self.cursor.x = self.buffer[self.y()].len()
                     };
                     return;
                 }
@@ -151,6 +149,14 @@ mod tests {
         editor.buffer.push(Line::new("á\ttaro"));
         editor.move_cursor_right(10, false);
         assert_eq!(editor.cursor, Cursor { x: 8, y: 0 });
+    }
+
+    #[test]
+    fn move_right_with_tab() {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("\t"));
+        editor.move_cursor_right(1, true);
+        assert_eq!(editor.cursor, Cursor { x: 0, y: 0 });
     }
 
     #[test]
