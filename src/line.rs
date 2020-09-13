@@ -158,7 +158,7 @@ impl Line {
             Ok(None) => end = self.content.len(),
             _ => unreachable!(),
         }
-        self.content.replace_range(dbg!(start..end), "");
+        self.content.replace_range(start..end, "");
         self.update_display();
     }
 
