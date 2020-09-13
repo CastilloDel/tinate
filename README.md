@@ -19,3 +19,9 @@ Then you can compile using Cargo:
 ```cargo build --release```
 
 This should build the binary inside target/release which you can then put in your $PATH.
+
+## Contributions
+Any contributions would be highly appreciated. Just remember they will be licensed under the MIT License. And please remember to use rustfmt if needed.
+
+## License
+This project is licensed under the MIT License
