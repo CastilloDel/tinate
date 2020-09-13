@@ -15,6 +15,9 @@ impl Cursor {
 
 impl Editor {
     pub fn pos(&self, tight: bool) -> (usize, usize) {
+        if self.buffer.len() == 0 {
+            return (0, 0);
+        }
         let cursor = self.cursor;
         let pos = self.bound((cursor.x, cursor.y), tight);
         self.assert_valid_pos(pos)
@@ -29,9 +32,6 @@ impl Editor {
     }
 
     fn bound(&self, (x, mut y): (usize, usize), tight: bool) -> (usize, usize) {
-        if self.buffer.len() == 0 {
-            return (0, 0);
-        }
         y = if y >= self.buffer.len() {
             self.buffer.len() - 1
         } else {
@@ -183,7 +183,7 @@ mod tests {
         editor.cursor.x = 5;
         editor.cursor.y = 1;
         editor.move_cursor_up(1);
-        assert_eq!(editor.cursor, Cursor { x: 4, y: 0 });
+        assert_eq!(editor.pos(true), (4, 0));
     }
 
     #[test]
@@ -203,7 +203,7 @@ mod tests {
         editor.buffer.push(Line::new("á\tt"));
         editor.cursor.x = 3;
         editor.move_cursor_down(1);
-        assert_eq!(editor.cursor, Cursor { x: 1, y: 1 });
+        assert_eq!(editor.pos(true), (1, 1));
     }
 
     #[test]
