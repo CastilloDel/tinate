@@ -16,7 +16,8 @@ impl Cursor {
 impl Editor {
     pub fn pos(&self, tight: bool) -> (usize, usize) {
         let cursor = self.cursor;
-        self.bound((cursor.x, cursor.y), tight)
+        let pos = self.bound((cursor.x, cursor.y), tight);
+        self.assert_valid_pos(pos)
     }
 
     pub fn x(&self, tight: bool) -> usize {
@@ -80,7 +81,6 @@ impl Editor {
                 self.cursor.y = self.y() - 1
             };
         }
-        self.assert_valid_pos();
     }
 
     pub fn move_cursor_down(&mut self, n: usize) {
@@ -91,15 +91,13 @@ impl Editor {
                 self.cursor.y = self.y() + 1
             };
         }
-        self.assert_valid_pos();
     }
 
-    fn assert_valid_pos(&mut self) {
-        if !self.buffer[self.y()].is_valid_index(self.x(true)) {
-            self.cursor.x = self.buffer[self.y()]
-                .prev_valid_index(self.x(true))
-                .unwrap_or(0);
+    fn assert_valid_pos(&self, mut pos: (usize, usize)) -> (usize, usize) {
+        if pos.0 != self.buffer[pos.1].len() && !self.buffer[pos.1].is_valid_index(pos.0) {
+            pos.0 = self.buffer[pos.1].prev_valid_index(pos.0).unwrap_or(0);
         }
+        pos
     }
 
     pub fn cursor_pos_to_screen_pos(&self, n_cols: u16, tight: bool) -> (u16, u16) {
