@@ -53,7 +53,7 @@ impl Editor {
 
     fn delete_back(&mut self) -> Result<()> {
         if self.x(false) != 0 {
-            self.move_cursor_left(1, true);
+            self.move_cursor_left(1, false);
             self.delete();
         } else if self.y() != 0 {
             self.move_cursor_up(1);
@@ -66,7 +66,7 @@ impl Editor {
     }
 
     fn delete(&mut self) {
-        let x = self.x(true);
+        let x = self.x(false);
         let y = self.y();
         self.buffer[y].remove(x);
     }
