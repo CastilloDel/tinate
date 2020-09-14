@@ -46,10 +46,6 @@ impl Line {
         }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.content.is_empty()
-    }
-
     pub fn is_valid_index(&self, index: usize) -> bool {
         if index >= self.len() {
             return false;
