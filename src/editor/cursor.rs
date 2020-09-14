@@ -14,7 +14,7 @@ impl Cursor {
 }
 
 impl Editor {
-    pub fn pos(&self, tight: bool) -> (usize, usize) {
+    pub(super) fn pos(&self, tight: bool) -> (usize, usize) {
         if self.buffer.len() == 0 {
             return (0, 0);
         }
@@ -23,11 +23,11 @@ impl Editor {
         self.assert_valid_pos(pos)
     }
 
-    pub fn x(&self, tight: bool) -> usize {
+    pub(super) fn x(&self, tight: bool) -> usize {
         self.pos(tight).0
     }
 
-    pub fn y(&self) -> usize {
+    pub(super) fn y(&self) -> usize {
         self.pos(true).1
     }
 
@@ -50,7 +50,7 @@ impl Editor {
         }
     }
 
-    pub fn move_cursor_right(&mut self, n: usize, tight: bool) {
+    pub(super) fn move_cursor_right(&mut self, n: usize, tight: bool) {
         for _ in 0..n {
             match self.buffer[self.y()].next_valid_index(self.x(false)) {
                 Some(index) => self.cursor.x = index,
@@ -64,7 +64,7 @@ impl Editor {
         }
     }
 
-    pub fn move_cursor_left(&mut self, n: usize, tight: bool) {
+    pub(super) fn move_cursor_left(&mut self, n: usize, tight: bool) {
         for _ in 0..n {
             self.cursor.x = match self.buffer[self.y()].prev_valid_index(self.x(tight)) {
                 Some(index) => index,
@@ -73,7 +73,7 @@ impl Editor {
         }
     }
 
-    pub fn move_cursor_up(&mut self, n: usize) {
+    pub(super) fn move_cursor_up(&mut self, n: usize) {
         for _ in 0..n {
             if self.y() == 0 {
                 return;
@@ -83,7 +83,7 @@ impl Editor {
         }
     }
 
-    pub fn move_cursor_down(&mut self, n: usize) {
+    pub(super) fn move_cursor_down(&mut self, n: usize) {
         for _ in 0..n {
             if self.y() == self.buffer.len() - 1 {
                 return;
@@ -100,7 +100,7 @@ impl Editor {
         pos
     }
 
-    pub fn cursor_pos_to_screen_pos(&self, n_cols: u16, tight: bool) -> (u16, u16) {
+    pub(super) fn cursor_pos_to_screen_pos(&self, n_cols: u16, tight: bool) -> (u16, u16) {
         let (cursor_x, cursor_y) = self.pos(tight);
         let x = (cursor_x % n_cols as usize) as u16;
         let mut y = self.buffer[self.y_scroll..cursor_y]
