@@ -14,7 +14,7 @@ impl Editor {
                     .map(|line_result| line_result.map(|line| Line::new(&line)))
                     .collect::<io::Result<Vec<Line>>>()?;
             }
-            Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+            Err(err) if err.kind() == io::ErrorKind::NotFound => self.buffer = vec![Line::new("")],
             Err(err) => return Err(err),
         }
         Ok(())

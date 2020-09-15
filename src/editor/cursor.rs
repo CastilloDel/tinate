@@ -15,9 +15,6 @@ impl Cursor {
 
 impl Editor {
     pub(super) fn pos(&self, tight: bool) -> (usize, usize) {
-        if self.buffer.len() == 0 {
-            return (0, 0);
-        }
         let cursor = self.cursor;
         let pos = self.bound((cursor.x, cursor.y), tight);
         self.assert_valid_pos(pos)
