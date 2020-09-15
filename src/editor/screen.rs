@@ -12,8 +12,6 @@ use std::fmt::Write as fmt_write;
 use std::io;
 use std::io::prelude::*;
 
-const WELCOME_MESSAGE: &'static str = "Tinate Is Not A Text Editor";
-
 impl Editor {
     pub(super) fn refresh_screen(&mut self) -> Result<()> {
         let mut buf = String::new();
@@ -47,35 +45,8 @@ impl Editor {
         }
         while rows_written < n_rows - 1 {
             queue!(buf, Clear(ClearType::CurrentLine))?;
-            if self.file_name == "" && rows_written == n_rows / 3 {
-                Editor::add_welcome_message(buf, n_cols)?;
-            } else {
-                write!(buf, "~\r\n")?;
-            }
+            write!(buf, "~\r\n")?;
             rows_written += 1;
-        }
-        Ok(())
-    }
-
-    fn add_welcome_message(buf: &mut String, n_cols: usize) -> std::fmt::Result {
-        let mut msg = String::from(WELCOME_MESSAGE);
-        if WELCOME_MESSAGE.len() > n_cols as usize {
-            msg.truncate(n_cols as usize);
-        } else {
-            Editor::write_padding(buf, n_cols)?;
-        }
-        write!(buf, "{}\r\n", msg)
-    }
-
-    fn write_padding(s: &mut String, n_cols: usize) -> std::fmt::Result {
-        let padding = (n_cols as usize - WELCOME_MESSAGE.len()) / 2;
-        if padding > 0 {
-            write!(s, "~")?;
-            let mut space = String::with_capacity(padding - 1);
-            for _i in 0..padding - 1 {
-                space.push(' ');
-            }
-            write!(s, "{}", space)?;
         }
         Ok(())
     }

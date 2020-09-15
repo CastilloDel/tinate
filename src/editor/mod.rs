@@ -27,16 +27,18 @@ pub struct Editor {
 
 impl Editor {
     pub fn init() -> Result<()> {
-        execute!(io::stdout(), EnterAlternateScreen)?;
-        enable_raw_mode()?;
-
         let mut editor = Editor::new();
         let args: Vec<String> = env::args().collect();
         if args.len() >= 2 {
             editor.load_to_buf(&args[1]).expect(
                 "Invalid path or file. Keep in mind that tinate can only read Unicode valid files",
             );
+        } else {
+            println!("You must call tinate with the name of the file you want to read or create");
+            return Ok(());
         }
+        execute!(io::stdout(), EnterAlternateScreen)?;
+        enable_raw_mode()?;
         loop {
             editor.refresh_screen()?;
             editor.process_event()?;
