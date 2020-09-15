@@ -52,6 +52,13 @@ impl Editor {
                 self.move_cursor_right(1, false);
                 self.mode = Mode::Insert;
             }
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('A'),
+                ..
+            }) => {
+                self.move_cursor_right(self.buffer[self.y()].len(), false);
+                self.mode = Mode::Insert;
+            }
             _ => {}
         }
         Ok(())
