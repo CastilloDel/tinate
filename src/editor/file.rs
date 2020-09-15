@@ -50,4 +50,20 @@ mod tests {
         std::fs::remove_file(name)?;
         Ok(())
     }
+
+    #[test]
+    fn save() -> Result<()> {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("I will store this and an ñ"));
+        let name = "TestFileWithANameUnnecessarilyLongToAvoidCollisions2";
+        editor.file_name = name.to_owned();
+        editor.save_to_file()?;
+        let file = File::open(name)?;
+        assert_eq!(
+            "I will store this and an ñ",
+            io::BufReader::new(file).lines().next().unwrap().unwrap()
+        );
+        std::fs::remove_file(name)?;
+        Ok(())
+    }
 }
