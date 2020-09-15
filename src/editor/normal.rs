@@ -1,11 +1,8 @@
 use super::{Editor, Mode};
-use crossterm::{
-    event::{Event, KeyCode, KeyEvent},
-    Result,
-};
+use crossterm::event::{Event, KeyCode, KeyEvent};
 
 impl Editor {
-    pub(super) fn match_event_normal(&mut self, event: Event) -> Result<()> {
+    pub(super) fn match_event_normal(&mut self, event: Event) {
         match event {
             Event::Key(KeyEvent {
                 code: KeyCode::Char(':'),
@@ -61,6 +58,5 @@ impl Editor {
             }
             _ => {}
         }
-        Ok(())
     }
 }
