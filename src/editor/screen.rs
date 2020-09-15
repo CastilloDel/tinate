@@ -88,11 +88,13 @@ impl Editor {
 
 #[cfg(test)]
 mod tests {
+    use super::super::Line;
     use super::*;
 
     #[test]
     fn status_bar_not_panic_with_little_windows() -> Result<()> {
-        let editor = Editor::new();
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new(""));
         let mut s = String::new();
         editor.draw_status_bar(&mut s, 0)
     }
