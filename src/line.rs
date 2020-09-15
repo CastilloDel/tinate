@@ -3,6 +3,7 @@ pub const TAB_SZ: usize = 4;
 use unicode_segmentation::GraphemeCursor;
 use unicode_segmentation::UnicodeSegmentation;
 
+#[derive(Debug, PartialEq)]
 pub struct Line {
     content: String,
     display: String,

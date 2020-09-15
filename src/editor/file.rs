@@ -29,3 +29,25 @@ impl Editor {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn load_from_file() -> Result<()> {
+        let name = "TestFileWithANameUnnecessarilyLongToAvoidCollisions";
+        let mut file = File::create(name)?;
+        file.write(b"This is a line\nAnd this is another line")?;
+        let mut editor = Editor::new();
+        editor.load_to_buf(name)?;
+        assert_eq!(
+            editor.buffer,
+            vec![
+                Line::new("This is a line"),
+                Line::new("And this is another line")
+            ]
+        );
+        std::fs::remove_file(name)?;
+        Ok(())
+    }
+}
