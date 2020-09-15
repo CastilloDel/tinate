@@ -16,65 +16,55 @@ const WELCOME_MESSAGE: &'static str = "Tinate Is Not A Text Editor";
 
 impl Editor {
     pub(super) fn refresh_screen(&mut self) -> Result<()> {
-        self.draw_rows()?;
-
+        let mut buf = String::new();
+        let term_size = term_size()?;
+        self.draw_rows(&mut buf, term_size)?;
+        self.draw_status_bar(&mut buf, term_size.0)?;
+        self.reposition_cursor(&mut buf, term_size.0)?;
+        print!("{}", buf);
         io::stdout().flush()?;
         Ok(())
     }
 
-    fn draw_rows(&mut self) -> Result<()> {
-        let mut s = String::new();
-        let (n_cols, n_rows) = term_size()?;
-        let (n_cols, n_rows) = (n_cols as usize, n_rows as usize);
-        queue!(s, MoveTo(0, 0))?;
+    fn draw_rows(&mut self, buf: &mut String, term_size: (u16, u16)) -> Result<()> {
+        let (n_cols, n_rows) = (term_size.0 as usize, term_size.1 as usize);
+        queue!(buf, MoveTo(0, 0))?;
         let mut rows_written = 0;
         let mut index = self.y_scroll;
         while rows_written < n_rows - 1 && index < self.buffer.len() {
-            let mut part_number = 0;
-            while rows_written < n_rows && part_number <= self.buffer[index].len() / n_cols {
-                queue!(s, Clear(ClearType::CurrentLine))?;
+            let mut line_part = 0;
+            while rows_written < n_rows && line_part <= self.buffer[index].len() / n_cols {
+                queue!(buf, Clear(ClearType::CurrentLine))?;
                 write!(
-                    &mut s,
+                    buf,
                     "{}\r\n",
-                    self.buffer[index].take_substr(part_number * n_cols, n_cols)
+                    self.buffer[index].take_substr(line_part * n_cols, n_cols)
                 )?;
                 rows_written += 1;
-                part_number += 1;
+                line_part += 1;
             }
             index += 1;
         }
         while rows_written < n_rows - 1 {
-            queue!(s, Clear(ClearType::CurrentLine))?;
+            queue!(buf, Clear(ClearType::CurrentLine))?;
             if self.file_name == "" && rows_written == n_rows / 3 {
-                Editor::add_welcome_message(&mut s, n_cols)?;
+                Editor::add_welcome_message(buf, n_cols)?;
             } else {
-                write!(&mut s, "~\r\n")?;
+                write!(buf, "~\r\n")?;
             }
             rows_written += 1;
         }
-        queue!(s, Clear(ClearType::CurrentLine))?;
-        self.draw_status_bar(&mut s, n_cols)?;
-        let cursor_screen_pos = self.cursor_pos_to_screen_pos(
-            n_cols as u16,
-            if self.mode == Mode::Insert {
-                false
-            } else {
-                true
-            },
-        );
-        queue!(s, MoveTo(cursor_screen_pos.0, cursor_screen_pos.1))?;
-        print!("{}", s);
         Ok(())
     }
 
-    fn add_welcome_message(s: &mut String, n_cols: usize) -> std::fmt::Result {
+    fn add_welcome_message(buf: &mut String, n_cols: usize) -> std::fmt::Result {
         let mut msg = String::from(WELCOME_MESSAGE);
         if WELCOME_MESSAGE.len() > n_cols as usize {
             msg.truncate(n_cols as usize);
         } else {
-            Editor::write_padding(s, n_cols)?;
+            Editor::write_padding(buf, n_cols)?;
         }
-        write!(s, "{}\r\n", msg)
+        write!(buf, "{}\r\n", msg)
     }
 
     fn write_padding(s: &mut String, n_cols: usize) -> std::fmt::Result {
@@ -90,7 +80,9 @@ impl Editor {
         Ok(())
     }
 
-    fn draw_status_bar(&self, s: &mut String, n_cols: usize) -> Result<()> {
+    fn draw_status_bar(&self, buf: &mut String, n_cols: u16) -> Result<()> {
+        let n_cols = n_cols as usize;
+        queue!(buf, Clear(ClearType::CurrentLine))?;
         let mut bar = String::new();
         if self.mode == Mode::Command {
             bar = self.command_buffer.clone();
@@ -105,7 +97,20 @@ impl Editor {
             write!(bar, " ")?;
         }
         write!(bar, "{}", row)?;
-        write!(s, "{}", bar.negative())?;
+        write!(buf, "{}", bar.negative())?;
+        Ok(())
+    }
+
+    fn reposition_cursor(&self, buf: &mut String, n_cols: u16) -> Result<()> {
+        let cursor_screen_pos = self.cursor_pos_to_screen_pos(
+            n_cols,
+            if self.mode == Mode::Insert {
+                false
+            } else {
+                true
+            },
+        );
+        queue!(buf, MoveTo(cursor_screen_pos.0, cursor_screen_pos.1))?;
         Ok(())
     }
 }
