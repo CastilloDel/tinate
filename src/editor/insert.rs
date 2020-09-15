@@ -25,6 +25,10 @@ impl Editor {
                 code: KeyCode::Backspace,
                 ..
             }) => self.delete_back(),
+            Event::Key(KeyEvent {
+                code: KeyCode::Delete,
+                ..
+            }) => self.delete(),
             _ => {}
         }
     }
@@ -46,10 +50,12 @@ impl Editor {
     }
 
     fn delete_back(&mut self) {
-        if self.x(false) != 0 {
+        let x = self.x(false);
+        let y = self.y();
+        if x != 0 {
             self.move_cursor_left(1, false);
-            self.delete();
-        } else if self.y() != 0 {
+            self.buffer[y].remove(x);
+        } else if y != 0 {
             self.move_cursor_up(1);
             let y = self.y();
             self.cursor.x = self.buffer[y].len();
@@ -61,7 +67,15 @@ impl Editor {
     fn delete(&mut self) {
         let x = self.x(false);
         let y = self.y();
-        self.buffer[y].remove(x);
+        if self.buffer[y].is_empty() && y != 0 {
+            self.buffer.remove(y);
+        } else if x == self.buffer[y].len() {
+            let line = self.buffer[y + 1].get_content();
+            self.buffer[y].push(&line);
+            self.buffer.remove(y + 1);
+        } else {
+            self.buffer[y].remove(x);
+        }
     }
 }
 
@@ -96,6 +110,17 @@ mod tests {
         editor.buffer.push(Line::new("1"));
         editor.cursor.y = 1;
         editor.delete_back();
+        assert_eq!(editor.buffer[0].get_content(), "Frase1");
+        assert_eq!(editor.cursor, Cursor { x: 5, y: 0 });
+    }
+
+    #[test]
+    fn delete() {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("Frase"));
+        editor.buffer.push(Line::new("1"));
+        editor.cursor.x = 5;
+        editor.delete();
         assert_eq!(editor.buffer[0].get_content(), "Frase1");
         assert_eq!(editor.cursor, Cursor { x: 5, y: 0 });
     }
