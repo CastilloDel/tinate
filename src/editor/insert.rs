@@ -71,3 +71,42 @@ impl Editor {
         self.buffer[y].remove(x);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::{Cursor, Line};
+    use super::*;
+    #[test]
+    fn insert_char() -> Result<()> {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("Frase"));
+        editor.cursor.x = 5;
+        editor.insert_char('1')?;
+        assert_eq!(editor.buffer[0].get_content(), "Frase1");
+        assert_eq!(editor.cursor.x, 6);
+        Ok(())
+    }
+
+    #[test]
+    fn newline() -> Result<()> {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("Frase"));
+        editor.cursor.x = 2;
+        editor.insert_new_line()?;
+        assert_eq!(editor.buffer, vec![Line::new("Fr"), Line::new("ase")]);
+        assert_eq!(editor.cursor, Cursor { x: 0, y: 1 });
+        Ok(())
+    }
+
+    #[test]
+    fn backspace() -> Result<()> {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("Frase"));
+        editor.buffer.push(Line::new("1"));
+        editor.cursor.y = 1;
+        editor.delete_back()?;
+        assert_eq!(editor.buffer[0].get_content(), "Frase1");
+        assert_eq!(editor.cursor, Cursor { x: 5, y: 0 });
+        Ok(())
+    }
+}
