@@ -22,6 +22,12 @@ impl Editor {
                 code: KeyCode::Enter,
                 ..
             }) => self.execute_command()?,
+            Event::Key(KeyEvent {
+                code: KeyCode::Backspace,
+                ..
+            }) => {
+                self.command_buffer.pop();
+            }
             _ => {}
         }
         Ok(())
