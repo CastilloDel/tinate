@@ -65,6 +65,14 @@ impl Editor {
                 self.cursor.y = self.y() + 1;
                 self.mode = Mode::Insert;
             }
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('O'),
+                ..
+            }) => {
+                self.buffer.insert(self.y(), Line::new(""));
+                self.cursor.x = 0;
+                self.mode = Mode::Insert;
+            }
             _ => {}
         }
     }
