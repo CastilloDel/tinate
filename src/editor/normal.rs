@@ -1,4 +1,4 @@
-use super::{Editor, Mode};
+use super::{Editor, Line, Mode};
 use crossterm::event::{Event, KeyCode, KeyEvent};
 
 impl Editor {
@@ -54,6 +54,15 @@ impl Editor {
                 ..
             }) => {
                 self.move_cursor_right(self.buffer[self.y()].len(), false);
+                self.mode = Mode::Insert;
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('o'),
+                ..
+            }) => {
+                self.buffer.insert(self.y() + 1, Line::new(""));
+                self.cursor.x = 0;
+                self.cursor.y = self.y() + 1;
                 self.mode = Mode::Insert;
             }
             _ => {}
