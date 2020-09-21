@@ -109,6 +109,28 @@ impl Editor {
 
         (x, y)
     }
+
+    pub(super) fn recalculate_scroll(&mut self, term_size: (u16, u16)) {
+        //in this case the tight value doesn't matter because we only care about the y_scroll
+        let (cursor_x, cursor_y) = self.pos(false);
+        loop {
+            if self.y_scroll > self.y() {
+                self.y_scroll -= 1;
+                continue;
+            }
+            let mut y = self.buffer[self.y_scroll..cursor_y]
+                .iter()
+                .fold(0, |acc, line| {
+                    acc + 1 + ((line.len() - min(1, line.len())) / term_size.0 as usize) as u16
+                });
+            y += (cursor_x / term_size.0 as usize) as u16;
+            if y >= term_size.1 - 1 {
+                self.y_scroll += 1;
+                continue;
+            }
+            break;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -230,5 +252,16 @@ mod tests {
         editor.cursor.x = 3;
         editor.cursor.y = 1;
         assert_eq!(editor.cursor_pos_to_screen_pos(4, true), (3, 1));
+    }
+
+    #[test]
+    fn recalculate_scroll() {
+        let mut editor = Editor::new();
+        editor.buffer.push(Line::new("ábcñ"));
+        editor.buffer.push(Line::new("yerga"));
+        editor.cursor.x = 3;
+        editor.cursor.y = 1;
+        editor.recalculate_scroll((4, 2)); //2 to let the row for the status bar
+        assert_eq!(editor.y_scroll, 1);
     }
 }

@@ -16,6 +16,7 @@ impl Editor {
     pub(super) fn refresh_screen(&mut self) -> Result<()> {
         let mut buf = String::new();
         let term_size = term_size()?;
+        self.recalculate_scroll(term_size);
         self.draw_rows(&mut buf, term_size)?;
         self.draw_status_bar(&mut buf, term_size.0)?;
         self.reposition_cursor(&mut buf, term_size.0)?;
