@@ -1,7 +1,7 @@
 # Tinate
-A text editor in progress. I'm developing it as a way to learn Rust more thoroughly.
+A toy text editor. I developed it as a way to learn Rust more thoroughly.
 
-It is intented to be a vim-like editor. In the current state you can already read and edit text files.
+It is intented to be a vim-like editor. You can perform simple text edits with it.
 
 ## Support
 Tinate has only been tested in Linux(Debian), but the [crossterm](https://github.com/crossterm-rs/crossterm) crate works on Windows and Mac.
